@@ -11,6 +11,7 @@
 - [ ] fix sql warning: uint64 values with high bit set are not supported
     - [ ] fix sql exception not caught and thrown, only being logged
 - [ ] how to handle expired?
+- [ ] write tests
 
 #### client ####
 - todo in separate repo
