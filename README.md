@@ -17,3 +17,5 @@
 - [ ] UI client to consume server
 - [ ] user to provide original url
 - [ ] user to call shortened url which shld redirect
+
+- [ ] deploy to heroku or similar
