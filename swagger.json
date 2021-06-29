@@ -1,0 +1,137 @@
+{
+    "openapi": "3.0.1",
+    "info": {
+        "title": "ShortUrl",
+        "description": "This is a url shorterner written in Go.",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "email": "apiteam@swagger.io"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.0.0"
+    },
+    "externalDocs": {
+        "description": "Find out more about Swagger",
+        "url": "http://swagger.io"
+    },
+    "servers": [
+        {
+            "url": "localhost:8080"
+        }
+    ],
+    "tags": [
+        {
+            "name": "shorturl",
+            "description": "Access to Petstore orders"
+        }
+    ],
+    "paths": {
+        "/shortUrls": {
+            "get": {
+                "tags": [
+                    "shorturl"
+                ],
+                "summary": "Returns all shortUrl entries",
+                "description": "Returns a list of url entries containing hash, original url, expiry date etc.",
+                "operationId": "GetAllShortUrls",
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GetAllShortUrlsResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "shorturl"
+                ],
+                "summary": "Create a shortUrl entry",
+                "operationId": "placeOrder",
+                "requestBody": {
+                    "description": "order placed for purchasing the pet",
+                    "content": {
+                        "*/*": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateShortUrlInput"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ShortUrl"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid Order",
+                        "content": {}
+                    }
+                },
+                "x-codegen-request-body-name": "body"
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ShortUrl": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "shortUrl": {
+                        "type": "string",
+                        "description": "Shortened url that will redirect to original url provided"
+                    },
+                    "originalUrl": {
+                        "type": "string",
+                        "description": "Original url that has been shortened for redirection"
+                    },
+                    "hashKey": {
+                        "type": "string",
+                        "description": "Auto generated unique hashKey"
+                    },
+                    "createdDate": {
+                        "type": "string"
+                    },
+                    "expiryDate": {
+                        "type": "string"
+                    }
+                }
+            },
+            "GetAllShortUrlsResponse": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/components/schemas/ShortUrl"
+                }
+            },
+            "CreateShortUrlInput": {
+                "type": "object",
+                "properties": {
+                    "originalUrl": {
+                        "type": "string"
+                    },
+                    "expiryDate": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}
