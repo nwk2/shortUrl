@@ -24,7 +24,7 @@ func main() {
 	r.GET("/shortUrls/:hashKey", api.GetShortUrlByHashKey)
 	r.POST("/shortUrls", api.CreateShortUrl)
 
-	r.GET("redirect/:hash", api.GetRedirect)
+	r.GET("/redirect/:hashKey", api.GetRedirect)
 
 	r.Run()
 }

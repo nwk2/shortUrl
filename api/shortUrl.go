@@ -39,7 +39,7 @@ func GetShortUrlByHashKey(c *gin.Context) {
 // GET /redirect/:hash_key
 func GetRedirect(c *gin.Context) {
 	var shortUrl models.ShortUrl
-	err := configs.DB.Where("hash_key = ?", c.Param("hash")).First(&shortUrl).Error
+	err := configs.DB.Where("hash_key = ?", c.Param("hashKey")).First(&shortUrl).Error
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "ShortUrl not found"})
 		return
