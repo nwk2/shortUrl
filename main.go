@@ -5,12 +5,14 @@ import (
 
 	"shortUrl/api"
 	"shortUrl/configs"
+	"shortUrl/middlewares"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	r := gin.Default()
+	r.Use(middlewares.CorsMiddleware())
 
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"res": "pong"})
@@ -24,5 +26,5 @@ func main() {
 
 	r.GET("redirect/:hash", api.GetRedirect)
 
-	r.Run()
+	r.Run(":8080")
 }
