@@ -1,7 +1,7 @@
 package middlewares
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,7 +13,7 @@ func CorsMiddleware() gin.HandlerFunc {
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST,OPTIONS,GET,PUT")
 
-		fmt.Println("hi from cors")
+		log.Println("Entered CORS middleware")
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)

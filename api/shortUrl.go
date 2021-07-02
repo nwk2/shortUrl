@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"hash/fnv"
 	"log"
 	"net/http"
@@ -26,13 +25,12 @@ func GetAllShortUrls(c *gin.Context) {
 // GET /shortUrls/:hash_key
 func GetShortUrlByHashKey(c *gin.Context) {
 	var shortUrl models.ShortUrl
-	fmt.Println(c.Param("hashKey"))
 	err := configs.DB.Where("hash_key = ?", c.Param("hashKey")).First(&shortUrl).Error
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "ShortUrl not found"})
 		return
 	}
-	fmt.Println(shortUrl)
+	log.Println(shortUrl)
 	c.JSON(http.StatusOK, gin.H{"data": shortUrl})
 }
 
@@ -44,8 +42,8 @@ func GetRedirect(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "ShortUrl not found"})
 		return
 	}
-	log.Println("Getting redirected to: ", shortUrl)
-	c.Redirect(http.StatusMovedPermanently, shortUrl.OriginalUrl)
+	log.Println("Getting redirected to: ", shortUrl.OriginalUrl)
+	c.Redirect(http.StatusFound, shortUrl.OriginalUrl)
 }
 
 // POST /shortUrls
