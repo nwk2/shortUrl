@@ -26,5 +26,5 @@ func main() {
 
 	r.GET("redirect/:hash", api.GetRedirect)
 
-	r.Run(":8080")
+	r.Run()
 }
