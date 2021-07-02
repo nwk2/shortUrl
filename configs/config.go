@@ -1,11 +1,12 @@
 package configs
 
 import (
-	"github.com/spf13/viper"
 	"log"
+
+	"github.com/spf13/viper"
 )
 
-type Config struct {
+type DbConfig struct {
 	DB_HOST     string `mapstructure:"POSTGRES_HOST"`
 	DB_PORT     string `mapstructure:"POSTGRES_PASSWORD"`
 	DB_NAME     string `mapstructure:"POSTGRES_DB"`
@@ -13,9 +14,15 @@ type Config struct {
 	DB_PASSWORD string `mapstructure:"POSTGRES_PASSWORD"`
 }
 
-func LoadConfig(path string) (config Config, err error) {
+type AppConfig struct {
+	APP_HOSTNAME string `mapstructure:"APP_HOSTNAME"`
+}
+
+var configPath = "./configs"
+
+func LoadDbConfig(path string) (config DbConfig, err error) {
 	viper.AddConfigPath(path)
-	viper.SetConfigName("config")
+	viper.SetConfigName("dbconfig")
 	viper.SetConfigType("yaml")
 
 	viper.AutomaticEnv()
@@ -27,5 +34,22 @@ func LoadConfig(path string) (config Config, err error) {
 	}
 
 	err = viper.Unmarshal(&config)
+	return
+}
+
+func LoadAppConfig() (appConfig AppConfig, err error) {
+	viper.AddConfigPath(configPath)
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+
+	viper.AutomaticEnv()
+
+	err = viper.ReadInConfig()
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	err = viper.Unmarshal(&appConfig)
 	return
 }

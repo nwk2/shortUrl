@@ -85,6 +85,33 @@
                 },
                 "x-codegen-request-body-name": "body"
             }
+        },
+        "/redirect/{hashKey}": {
+            "parameters": [
+                {
+                    "name": "hashKey",
+                    "in": "path",
+                    "schema": {
+                        "type": "string"
+                    },
+                    "required": true
+                }
+            ],
+            "get": {
+                "tags": [
+                    "shorturl"
+                ],
+                "summary": "Get redirected to url associated with hashkey",
+                "operationId": "GetRedirect",
+                "responses": {
+                    "301": {
+                        "description": "successful redirect",
+                        "content": {
+                            "text/html": {}
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {

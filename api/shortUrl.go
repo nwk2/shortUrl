@@ -10,8 +10,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"shortUrl/models"
 	"shortUrl/configs"
+	"shortUrl/models"
 )
 
 // GET /shortUrls
@@ -44,7 +44,7 @@ func GetRedirect(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "ShortUrl not found"})
 		return
 	}
-	log.Println(shortUrl)
+	log.Println("Getting redirected to: ", shortUrl)
 	c.Redirect(http.StatusMovedPermanently, shortUrl.OriginalUrl)
 }
 
@@ -75,12 +75,12 @@ func CreateShortUrl(c *gin.Context) {
 
 	hashValueStr := strconv.FormatUint(hashValue, 10)
 
-	shortened := "localhost:8080/redirect/" + hashValueStr
+	shortened := "/redirect/" + hashValueStr
 
 	shortUrl := models.ShortUrl{
 		ShortUrl:    shortened,
 		OriginalUrl: input.OriginalUrl,
-		HashKey:     hashValue,
+		HashKey:     hashValueStr,
 		CreatedDate: createdTS,
 		ExpiryDate:  expiryTS,
 	}

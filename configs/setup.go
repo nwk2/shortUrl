@@ -27,7 +27,7 @@ func ConnectDb() {
 // placeholder for Postgres DB connection
 
 // func ConnectPGDatabase() {
-// 	config, err := LoadConfig("./util")
+// 	config, err := LoadConfig("./configs")
 // 	if err != nil {
 // 		log.Fatal("Failed to load config file:", err)
 // 	}
