@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"net/url"
 
 	"github.com/gin-gonic/gin"
 
@@ -42,8 +43,13 @@ func GetRedirect(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "ShortUrl not found"})
 		return
 	}
-	log.Println("Getting redirected to: ", shortUrl.OriginalUrl)
-	c.Redirect(http.StatusFound, shortUrl.OriginalUrl)
+	redirectUrl, _ := url.Parse(shortUrl.OriginalUrl)
+	if redirectUrl.Scheme == "" {
+		log.Println("Original url does not have scheme. Defaulting to http protocol...")
+		redirectUrl.Scheme = "http"
+	}
+	log.Println("Getting redirected to: ", redirectUrl)
+	c.Redirect(http.StatusFound, redirectUrl.String())
 }
 
 // POST /shortUrls
@@ -55,6 +61,11 @@ func CreateShortUrl(c *gin.Context) {
 	if err := c.BindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	validatedUrl, err := url.Parse(input.OriginalUrl)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid url provided..."})
 	}
 
 	expiryTS, createdTS, _ := formatTimestamps(input.ExpiryDate)
@@ -69,7 +80,7 @@ func CreateShortUrl(c *gin.Context) {
 	var hashValue uint64
 
 	hashKey := time.Now().String()
-	hashValue = hash(hashKey, input.OriginalUrl)
+	hashValue = hash(hashKey, validatedUrl.String())
 
 	hashValueStr := strconv.FormatUint(hashValue, 10)
 
@@ -79,7 +90,7 @@ func CreateShortUrl(c *gin.Context) {
 
 	shortUrl := models.ShortUrl{
 		ShortUrl:    shortened,
-		OriginalUrl: input.OriginalUrl,
+		OriginalUrl: validatedUrl.String(),
 		HashKey:     hashValueStr,
 		CreatedDate: createdTS,
 		ExpiryDate:  expiryTS,
