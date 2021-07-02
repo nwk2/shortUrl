@@ -19,7 +19,7 @@
     },
     "servers": [
         {
-            "url": "localhost:8080"
+            "url": "https://test-go-app-url.herokuapp.com"
         }
     ],
     "tags": [
