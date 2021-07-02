@@ -39,7 +39,7 @@ func LoadDbConfig(path string) (config DbConfig, err error) {
 
 func LoadAppConfig() (appConfig AppConfig, err error) {
 	viper.AddConfigPath(configPath)
-	viper.SetConfigName("config")
+	viper.SetConfigName("appconfig")
 	viper.SetConfigType("yaml")
 
 	viper.AutomaticEnv()

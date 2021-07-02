@@ -75,7 +75,9 @@ func CreateShortUrl(c *gin.Context) {
 
 	hashValueStr := strconv.FormatUint(hashValue, 10)
 
-	shortened := "/redirect/" + hashValueStr
+	appConfig, _ := configs.LoadAppConfig()
+
+	shortened := appConfig.APP_HOSTNAME + hashValueStr
 
 	shortUrl := models.ShortUrl{
 		ShortUrl:    shortened,
