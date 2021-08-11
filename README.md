@@ -1,17 +1,19 @@
 ### TODO ###
 
 #### server ####
-- [X] dockerise go app
-    - [ ] push to github
-    - [ ] set up CI / CD
+- [ ] SHA1 salt / hash?
+- [x] dockerise go app
+    - [x] push to github
+    - [ ] write tests
+    - [ ] set up CI
+    - [x] set up CD (currently auto deploys w/o tests)
 - [ ] update swagger for redirect endpoint
 - [ ] project organization and structure
 - [ ] validate and reject invalid request bodies i.e. invalid struct fields
-- [ ] handle multiple errors / error handling. How?
+- [ ] handle multiple errors / error handling. Look up Golang error handling.
 - [ ] fix sql warning: uint64 values with high bit set are not supported
     - [ ] fix sql exception not caught and thrown, only being logged
 - [ ] how to handle expired?
-- [ ] write tests
 
 #### client ####
 - todo in separate repo
