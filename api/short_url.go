@@ -59,13 +59,13 @@ func CreateShortUrl(c *gin.Context) {
 
 	// TODO: how to validate if invalid fields are provided in request body?
 	if err := c.BindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	validatedUrl, err := url.Parse(input.OriginalUrl)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid url provided..."})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid url provided..."})
 	}
 
 	expiryTS, createdTS, _ := formatTimestamps(input.ExpiryDate)
