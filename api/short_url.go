@@ -14,19 +14,19 @@ import (
 	"shortUrl/models"
 )
 
-// GET /shortUrls
-// Get all short urls
-func GetAllShortUrls(c *gin.Context) {
+// GET /short-urls
+// List all short urls
+func ListShortUrls(c *gin.Context) {
 	var shortUrls []models.ShortUrl
 	configs.DB.Find(&shortUrls)
 
 	c.JSON(http.StatusOK, shortUrls)
 }
 
-// GET /shortUrls/:hash_key
+// GET /short-urls/:hash_key
 func GetShortUrlByHashKey(c *gin.Context) {
 	var shortUrl models.ShortUrl
-	err := configs.DB.Where("hash_key = ?", c.Param("hashKey")).First(&shortUrl).Error
+	err := configs.DB.Where("hash_key = ?", c.Param("hash_key")).First(&shortUrl).Error
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "ShortUrl not found"})
 		return
@@ -38,7 +38,7 @@ func GetShortUrlByHashKey(c *gin.Context) {
 // GET /redirect/:hash_key
 func GetRedirect(c *gin.Context) {
 	var shortUrl models.ShortUrl
-	err := configs.DB.Where("hash_key = ?", c.Param("hashKey")).First(&shortUrl).Error
+	err := configs.DB.Where("hash_key = ?", c.Param("hash_key")).First(&shortUrl).Error
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "ShortUrl not found"})
 		return
@@ -52,7 +52,7 @@ func GetRedirect(c *gin.Context) {
 	c.Redirect(http.StatusFound, redirectUrl.String())
 }
 
-// POST /shortUrls
+// POST /short-urls
 // Create new short url
 func CreateShortUrl(c *gin.Context) {
 	var input models.CreateShortUrlInput
@@ -98,9 +98,6 @@ func CreateShortUrl(c *gin.Context) {
 
 	configs.DB.Create(&shortUrl)
 	c.JSON(http.StatusCreated, shortUrl)
-
-	// after creation we have ID and original_url
-	// https://stackoverflow.com/questions/742013/how-do-i-create-a-url-shortener
 }
 
 // TODO: How to handle multiple errors?

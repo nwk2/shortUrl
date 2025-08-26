@@ -20,9 +20,9 @@ func main() {
 
 	configs.ConnectDb()
 
-	r.GET("/shortUrls", api.GetAllShortUrls)
-	r.GET("/shortUrls/:hashKey", api.GetShortUrlByHashKey)
-	r.POST("/shortUrls", api.CreateShortUrl)
+	r.GET("/short-urls", api.ListShortUrls)
+	r.GET("/short-urls/:hashKey", api.GetShortUrlByHashKey)
+	r.POST("/short-urls", api.CreateShortUrl)
 
 	r.GET("/redirect/:hashKey", api.GetRedirect)
 
