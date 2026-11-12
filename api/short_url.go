@@ -36,7 +36,7 @@ func GetShortUrlByHashKey(c *gin.Context) {
 		return
 	}
 	log.Println(shortUrl)
-	c.JSON(http.StatusOK, gin.H{"data": shortUrl})
+	c.JSON(http.StatusOK, shortUrl)
 }
 
 // GET /redirect/:hash_key
