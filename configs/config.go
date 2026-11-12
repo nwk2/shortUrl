@@ -8,7 +8,7 @@ import (
 
 type DbConfig struct {
 	DB_HOST     string `mapstructure:"POSTGRES_HOST"`
-	DB_PORT     string `mapstructure:"POSTGRES_PASSWORD"`
+	DB_PORT     string `mapstructure:"POSTGRES_PORT"`
 	DB_NAME     string `mapstructure:"POSTGRES_DB"`
 	DB_USER     string `mapstructure:"POSTGRES_USER"`
 	DB_PASSWORD string `mapstructure:"POSTGRES_PASSWORD"`
@@ -22,14 +22,14 @@ var configPath = "./configs"
 
 func LoadDbConfig(path string) (config DbConfig, err error) {
 	viper.AddConfigPath(path)
-	viper.SetConfigName("dbconfig")
+	viper.SetConfigName("db_config")
 	viper.SetConfigType("yaml")
 
 	viper.AutomaticEnv()
 
 	err = viper.ReadInConfig()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 		return
 	}
 
@@ -39,14 +39,14 @@ func LoadDbConfig(path string) (config DbConfig, err error) {
 
 func LoadAppConfig() (appConfig AppConfig, err error) {
 	viper.AddConfigPath(configPath)
-	viper.SetConfigName("appconfig")
+	viper.SetConfigName("app_config")
 	viper.SetConfigType("yaml")
 
 	viper.AutomaticEnv()
 
 	err = viper.ReadInConfig()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 		return
 	}
 
