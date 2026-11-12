@@ -1,164 +1,290 @@
 {
-    "openapi": "3.0.1",
-    "info": {
-        "title": "ShortUrl",
-        "description": "This is a url shorterner written in Go.",
-        "termsOfService": "http://swagger.io/terms/",
-        "contact": {
-            "email": "apiteam@swagger.io"
+  "components": {
+    "schemas": {
+      "CreateShortUrlInput": {
+        "properties": {
+          "expiry_date": {
+            "description": "Optional expiry, format YYYY-MM-DD HH:MM. Defaults to 30 days after creation.",
+            "example": "2026-12-12 21:00",
+            "type": "string"
+          },
+          "original_url": {
+            "format": "uri",
+            "type": "string"
+          }
         },
-        "license": {
-            "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        "required": [
+          "original_url"
+        ],
+        "type": "object"
+      },
+      "Error": {
+        "properties": {
+          "error": {
+            "type": "string"
+          }
         },
-        "version": "1.0.0"
-    },
-    "externalDocs": {
-        "description": "Find out more about Swagger",
-        "url": "http://swagger.io"
-    },
-    "servers": [
-        {
-            "url": "https://test-go-app-url.herokuapp.com"
-        }
-    ],
-    "tags": [
-        {
-            "name": "shorturl",
-            "description": "Access to Petstore orders"
-        }
-    ],
-    "paths": {
-        "/shortUrls": {
-            "get": {
-                "tags": [
-                    "shorturl"
-                ],
-                "summary": "Returns all shortUrl entries",
-                "description": "Returns a list of url entries containing hash, original url, expiry date etc.",
-                "operationId": "GetAllShortUrls",
-                "responses": {
-                    "200": {
-                        "description": "successful operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/GetAllShortUrlsResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "tags": [
-                    "shorturl"
-                ],
-                "summary": "Create a shortUrl entry",
-                "operationId": "placeOrder",
-                "requestBody": {
-                    "description": "order placed for purchasing the pet",
-                    "content": {
-                        "*/*": {
-                            "schema": {
-                                "$ref": "#/components/schemas/CreateShortUrlInput"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "successful operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ShortUrl"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid Order",
-                        "content": {}
-                    }
-                },
-                "x-codegen-request-body-name": "body"
-            }
+        "type": "object"
+      },
+      "ListShortUrlsResponse": {
+        "items": {
+          "$ref": "#/components/schemas/ShortUrl"
         },
-        "/redirect/{hashKey}": {
-            "parameters": [
-                {
-                    "name": "hashKey",
-                    "in": "path",
-                    "schema": {
-                        "type": "string"
-                    },
-                    "required": true
-                }
-            ],
-            "get": {
-                "tags": [
-                    "shorturl"
-                ],
-                "summary": "Get redirected to url associated with hashkey",
-                "operationId": "GetRedirect",
-                "responses": {
-                    "301": {
-                        "description": "successful redirect",
-                        "content": {
-                            "text/html": {}
-                        }
-                    }
-                }
-            }
-        }
-    },
-    "components": {
-        "schemas": {
-            "ShortUrl": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "integer"
-                    },
-                    "shortUrl": {
-                        "type": "string",
-                        "description": "Shortened url that will redirect to original url provided"
-                    },
-                    "originalUrl": {
-                        "type": "string",
-                        "description": "Original url that has been shortened for redirection"
-                    },
-                    "hashKey": {
-                        "type": "string",
-                        "description": "Auto generated unique hashKey"
-                    },
-                    "createdDate": {
-                        "type": "string"
-                    },
-                    "expiryDate": {
-                        "type": "string"
-                    }
-                }
-            },
-            "GetAllShortUrlsResponse": {
-                "type": "array",
-                "items": {
-                    "$ref": "#/components/schemas/ShortUrl"
-                }
-            },
-            "CreateShortUrlInput": {
-                "type": "object",
-                "properties": {
-                    "originalUrl": {
-                        "type": "string"
-                    },
-                    "expiryDate": {
-                        "type": "string"
-                    }
-                }
-            }
-        }
+        "type": "array"
+      },
+      "ShortUrl": {
+        "properties": {
+          "created_date": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiry_date": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "hash_key": {
+            "description": "Auto-generated unique hash key",
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "original_url": {
+            "description": "Original URL that was shortened",
+            "type": "string"
+          },
+          "short_url": {
+            "description": "Shortened URL that redirects to the original URL",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     }
+  },
+  "info": {
+    "description": "URL shortener REST API written in Go. Create a short link for a URL, look it up by hash, or follow the redirect.",
+    "title": "ShortUrl",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.1",
+  "paths": {
+    "/ping": {
+      "get": {
+        "operationId": "ping",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "res": {
+                      "example": "pong",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Server is up"
+          }
+        },
+        "summary": "Health check",
+        "tags": [
+          "shorturl"
+        ]
+      }
+    },
+    "/redirect/{hashKey}": {
+      "get": {
+        "operationId": "getRedirect",
+        "responses": {
+          "302": {
+            "content": {
+              "text/html": {}
+            },
+            "description": "Redirect to the original URL",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No short URL with this hash key"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Short URL has expired"
+          }
+        },
+        "summary": "Redirect to the original URL",
+        "tags": [
+          "shorturl"
+        ]
+      },
+      "parameters": [
+        {
+          "description": "Hash key of the short URL",
+          "in": "path",
+          "name": "hashKey",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/short-urls": {
+      "get": {
+        "operationId": "listShortUrls",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListShortUrlsResponse"
+                }
+              }
+            },
+            "description": "List of all short URL entries"
+          }
+        },
+        "summary": "List all short URLs",
+        "tags": [
+          "shorturl"
+        ]
+      },
+      "post": {
+        "description": "Creates a short URL for the given original URL. If expiry_date is omitted it defaults to 30 days after creation. Expiry format is YYYY-MM-DD HH:MM.",
+        "operationId": "createShortUrl",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateShortUrlInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShortUrl"
+                }
+              }
+            },
+            "description": "Short URL created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Invalid request body, invalid URL, invalid expiry format, or expiry date in the past"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Failed to load app config or to store the short URL"
+          }
+        },
+        "summary": "Create a short URL",
+        "tags": [
+          "shorturl"
+        ]
+      }
+    },
+    "/short-urls/{hashKey}": {
+      "get": {
+        "operationId": "getShortUrlByHashKey",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShortUrl"
+                }
+              }
+            },
+            "description": "Short URL entry"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No short URL with this hash key"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Short URL has expired"
+          }
+        },
+        "summary": "Get a short URL by hash key",
+        "tags": [
+          "shorturl"
+        ]
+      },
+      "parameters": [
+        {
+          "description": "Hash key of the short URL",
+          "in": "path",
+          "name": "hashKey",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    }
+  },
+  "servers": [
+    {
+      "description": "Local development server",
+      "url": "http://localhost:8080"
+    }
+  ],
+  "tags": [
+    {
+      "description": "Short URL operations",
+      "name": "shorturl"
+    }
+  ]
 }
