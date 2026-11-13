@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -20,14 +21,47 @@ func New(svc *service.Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-// GET /short-urls
+// GET /short-urls?limit=&offset=
+// Lists live links only (expired ones are excluded; the hourly sweep
+// removes them). limit defaults to 50 and is capped at 100; offset
+// defaults to 0.
 func (h *Handler) ListShortUrls(c *gin.Context) {
-	links, err := h.svc.List(c.Request.Context())
+	limit, offset, ok := parsePagination(c)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid pagination parameters, expected ?limit=<1-100>&offset=<0+>"})
+		return
+	}
+	links, err := h.svc.List(c.Request.Context(), limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, links)
+}
+
+// parsePagination reads ?limit= and ?offset=, applying the defaults and
+// the 100-row cap. A non-numeric or out-of-range value is rejected.
+func parsePagination(c *gin.Context) (limit, offset int, ok bool) {
+	limit = 50
+	if raw := c.Query("limit"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 {
+			return 0, 0, false
+		}
+		limit = n
+		if limit > 100 {
+			limit = 100
+		}
+	}
+	offset = 0
+	if raw := c.Query("offset"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 0 {
+			return 0, 0, false
+		}
+		offset = n
+	}
+	return limit, offset, true
 }
 
 // GET /short-urls/:hashKey

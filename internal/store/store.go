@@ -71,10 +71,19 @@ func (s *Store) GetByHash(ctx context.Context, hashKey string) (model.ShortUrl, 
 	return link, err
 }
 
-func (s *Store) List(ctx context.Context) ([]model.ShortUrl, error) {
+func (s *Store) List(ctx context.Context, limit, offset int) ([]model.ShortUrl, error) {
 	var links []model.ShortUrl
-	err := s.db.WithContext(ctx).Find(&links).Error
+	// Only live links, in creation order so pagination is stable.
+	err := s.db.WithContext(ctx).Where("expiry_date >= ?", time.Now()).Order("id ASC").Limit(limit).Offset(offset).Find(&links).Error
 	return links, err
+}
+
+// DeleteExpired removes expired links, returning how many rows were
+// removed. The hourly sweeper in main calls this; it is also what lets
+// tests prove an expired link is really gone.
+func (s *Store) DeleteExpired(ctx context.Context) (int64, error) {
+	res := s.db.WithContext(ctx).Where("expiry_date < ?", time.Now()).Delete(&model.ShortUrl{})
+	return res.RowsAffected, res.Error
 }
 
 // UpdateExpiry moves a link's expiry date. Used by tests to build an

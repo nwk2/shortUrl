@@ -40,6 +40,13 @@ func (s *Service) Create(ctx context.Context, originalURL, expiry string) (model
 	if err != nil || parsedURL.String() == "" {
 		return model.ShortUrl{}, ErrInvalidURL
 	}
+	// Only http(s) links can be shortened. Anything else (javascript:,
+	// data:, ftp:, ...) would turn the short domain into a redirector
+	// to an arbitrary scheme. A missing scheme is fine — the redirect
+	// defaults it to http, as before.
+	if !allowedScheme(parsedURL.Scheme) {
+		return model.ShortUrl{}, ErrInvalidURL
+	}
 
 	expiryTS, createdTS, err := parseTimestamps(expiry)
 	if err != nil {
@@ -94,13 +101,17 @@ func (s *Service) GetByHash(ctx context.Context, hashKey string) (model.ShortUrl
 	return link, nil
 }
 
-// List returns every stored link.
-func (s *Service) List(ctx context.Context) ([]model.ShortUrl, error) {
-	return s.store.List(ctx)
+// List returns live (unexpired) links, pageSize at a time, in creation
+// order. Expired rows are excluded here; they are removed by the hourly
+// sweep, and GetByHash still reports 410 for them until then.
+func (s *Service) List(ctx context.Context, limit, offset int) ([]model.ShortUrl, error) {
+	return s.store.List(ctx, limit, offset)
 }
 
 // Resolve returns the original URL a hash redirects to, defaulting a
-// missing scheme to http (as the old redirect handler did).
+// missing scheme to http (as the old redirect handler did). A stored URL
+// with any other scheme is refused, so a row written before the scheme
+// allowlist can't be used as a redirector either.
 func (s *Service) Resolve(ctx context.Context, hashKey string) (string, error) {
 	link, err := s.GetByHash(ctx, hashKey)
 	if err != nil {
@@ -110,10 +121,24 @@ func (s *Service) Resolve(ctx context.Context, hashKey string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if !allowedScheme(redirectURL.Scheme) {
+		return "", ErrInvalidURL
+	}
 	if redirectURL.Scheme == "" {
 		redirectURL.Scheme = "http"
 	}
 	return redirectURL.String(), nil
+}
+
+// allowedScheme is the redirect allowlist: http, https, or empty
+// (normalised to http at redirect time). Everything else is rejected.
+func allowedScheme(scheme string) bool {
+	switch scheme {
+	case "", "http", "https":
+		return true
+	default:
+		return false
+	}
 }
 
 func isExpired(link model.ShortUrl) bool {

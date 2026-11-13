@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -52,6 +53,27 @@ func TestCorsAllowedOrigin(t *testing.T) {
 	r.ServeHTTP(w, req)
 	if got := w.Header().Get("Access-Control-Allow-Origin"); got != "" {
 		t.Errorf("Allow-Origin = %q, want empty for a non-listed origin", got)
+	}
+}
+
+func TestPruneStaleWindows(t *testing.T) {
+	now := time.Now()
+	windows := map[string]*window{
+		"1.1.1.1": {count: 5, startedAt: now.Add(-2 * time.Minute)},  // stale
+		"2.2.2.2": {count: 3, startedAt: now.Add(-30 * time.Second)}, // fresh
+		"3.3.3.3": {count: 1, startedAt: now},                        // fresh
+	}
+
+	pruneStaleWindows(windows, now)
+
+	if _, ok := windows["1.1.1.1"]; ok {
+		t.Error("stale window (2m old) was not pruned")
+	}
+	if _, ok := windows["2.2.2.2"]; !ok {
+		t.Error("fresh window (30s old) was pruned")
+	}
+	if _, ok := windows["3.3.3.3"]; !ok {
+		t.Error("fresh window (just started) was pruned")
 	}
 }
 

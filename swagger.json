@@ -156,6 +156,24 @@
         "operationId": "listShortUrls",
         "parameters": [
           {
+            "description": "Page size, 1-100. Defaults to 50; larger values are capped at 100.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Rows to skip. Defaults to 0.",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
             "description": "Shared secret for the create/list endpoints (API_KEY in app config).",
             "in": "header",
             "name": "X-Api-Key",
@@ -174,7 +192,17 @@
                 }
               }
             },
-            "description": "List of all short URL entries"
+            "description": "Live short URL entries, paginated (expired links are excluded)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Invalid limit or offset"
           }
         },
         "summary": "List all short URLs",
@@ -183,7 +211,7 @@
         ]
       },
       "post": {
-        "description": "Creates a short URL for the given original URL. If expiry_date is omitted it defaults to 30 days after creation. Expiry format is YYYY-MM-DD HH:MM.",
+        "description": "Creates a short URL for the given original URL. If expiry_date is omitted it defaults to 30 days after creation. Expiry format is YYYY-MM-DD HH:MM. Only http:// and https:// URLs are accepted (a bare host is treated as http); any other scheme is rejected.",
         "operationId": "createShortUrl",
         "parameters": [
           {

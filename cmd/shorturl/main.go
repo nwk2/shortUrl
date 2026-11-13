@@ -1,8 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -49,5 +54,58 @@ func main() {
 
 	r.GET("/redirect/:hashKey", h.GetRedirect)
 
-	r.Run()
+	// Expired links are swept hourly so they don't accumulate forever.
+	stopSweeper := make(chan struct{})
+	go sweepExpiredLinks(st, time.Hour, stopSweeper)
+
+	// Timeouts bound how long a slow client can hold a connection; the
+	// shutdown below lets in-flight requests finish instead of being cut
+	// off by SIGTERM.
+	srv := &http.Server{
+		Addr:         ":8080",
+		Handler:      r,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutting down...")
+	close(stopSweeper)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Forced shutdown: %v", err)
+	}
+	log.Println("Server stopped")
+}
+
+// sweepExpiredLinks deletes expired links every interval until stop is
+// closed (at shutdown). It only logs when it actually removed something.
+func sweepExpiredLinks(st *store.Store, interval time.Duration, stop <-chan struct{}) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			n, err := st.DeleteExpired(context.Background())
+			if err != nil {
+				log.Println("Expiry sweep failed:", err)
+				continue
+			}
+			if n > 0 {
+				log.Printf("Expiry sweep removed %d expired links", n)
+			}
+		}
+	}
 }

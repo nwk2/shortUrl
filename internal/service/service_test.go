@@ -82,6 +82,42 @@ func TestParseTimestampsBadFormat(t *testing.T) {
 	}
 }
 
+func TestServiceCreateRejectsScheme(t *testing.T) {
+	svc := setupTestService(t)
+	ctx := context.Background()
+
+	for _, raw := range []string{
+		"javascript:alert(1)",
+		"data:text/html,<h1>hi</h1>",
+		"ftp://example.com/file",
+	} {
+		if _, err := svc.Create(ctx, raw, ""); !errors.Is(err, ErrInvalidURL) {
+			t.Errorf("Create(%q) error = %v, want ErrInvalidURL", raw, err)
+		}
+	}
+}
+
+func TestServiceResolveRejectsStoredScheme(t *testing.T) {
+	svc := setupTestService(t)
+	ctx := context.Background()
+
+	// A row written before the allowlist (or around it) must not be
+	// usable as a redirector either.
+	stored := model.ShortUrl{
+		ShortUrl:    "http://localhost:8080/redirect/oldbad1",
+		OriginalUrl: "javascript:alert(1)",
+		HashKey:     "oldbad1",
+		CreatedDate: time.Now(),
+		ExpiryDate:  time.Now().Add(24 * time.Hour),
+	}
+	if err := svc.store.Create(ctx, &stored); err != nil {
+		t.Fatalf("store.Create returned error: %v", err)
+	}
+	if _, err := svc.Resolve(ctx, "oldbad1"); !errors.Is(err, ErrInvalidURL) {
+		t.Errorf("Resolve on a javascript: link error = %v, want ErrInvalidURL", err)
+	}
+}
+
 func TestServiceCreate(t *testing.T) {
 	svc := setupTestService(t)
 	ctx := context.Background()

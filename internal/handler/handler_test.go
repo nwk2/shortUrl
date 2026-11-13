@@ -229,6 +229,81 @@ func TestRedirectExpired(t *testing.T) {
 	}
 }
 
+func TestListShortUrlsPagination(t *testing.T) {
+	r, _ := setupTestHandler(t)
+
+	createShortUrl(t, r, `{"original_url":"https://example.com/one"}`)
+	createShortUrl(t, r, `{"original_url":"https://example.com/two"}`)
+	createShortUrl(t, r, `{"original_url":"https://example.com/three"}`)
+
+	// First page: two entries.
+	w := doRequest(t, r, http.MethodGet, "/short-urls?limit=2", "")
+	if w.Code != http.StatusOK {
+		t.Fatalf("list returned %d, want %d: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+	var page []model.ShortUrl
+	if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil {
+		t.Fatalf("list response is not a ShortUrl array: %v", err)
+	}
+	if len(page) != 2 {
+		t.Fatalf("page 1 returned %d entries, want 2", len(page))
+	}
+
+	// Second page: the remaining entry.
+	w = doRequest(t, r, http.MethodGet, "/short-urls?limit=2&offset=2", "")
+	if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil {
+		t.Fatalf("list response is not a ShortUrl array: %v", err)
+	}
+	if len(page) != 1 {
+		t.Errorf("page 2 returned %d entries, want 1", len(page))
+	}
+
+	// No params: the default page holds all three.
+	w = doRequest(t, r, http.MethodGet, "/short-urls", "")
+	if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil {
+		t.Fatalf("list response is not a ShortUrl array: %v", err)
+	}
+	if len(page) != 3 {
+		t.Errorf("default list returned %d entries, want 3", len(page))
+	}
+}
+
+func TestListShortUrlsInvalidPagination(t *testing.T) {
+	r, _ := setupTestHandler(t)
+
+	for _, path := range []string{
+		"/short-urls?limit=abc",
+		"/short-urls?limit=0",
+		"/short-urls?limit=-1",
+		"/short-urls?offset=-1",
+		"/short-urls?offset=abc",
+	} {
+		w := doRequest(t, r, http.MethodGet, path, "")
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("%s returned %d, want %d", path, w.Code, http.StatusBadRequest)
+		}
+	}
+}
+
+func TestListShortUrlsExcludesExpired(t *testing.T) {
+	r, st := setupTestHandler(t)
+
+	created := createShortUrl(t, r, `{"original_url":"https://example.com/some/path"}`)
+	expireLink(t, st, created.HashKey)
+
+	w := doRequest(t, r, http.MethodGet, "/short-urls", "")
+	if w.Code != http.StatusOK {
+		t.Fatalf("list returned %d, want %d: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+	var list []model.ShortUrl
+	if err := json.Unmarshal(w.Body.Bytes(), &list); err != nil {
+		t.Fatalf("list response is not a ShortUrl array: %v", err)
+	}
+	if len(list) != 0 {
+		t.Errorf("list returned %d entries, want 0 (expired links are excluded)", len(list))
+	}
+}
+
 func TestListShortUrls(t *testing.T) {
 	r, _ := setupTestHandler(t)
 

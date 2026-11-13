@@ -39,14 +39,20 @@ on an in-memory database.
 | Method | Route | Auth | Description |
 | ------ | ----- | ---- | ----------- |
 | GET | `/ping` | — | `{"res":"pong"}` health check |
-| POST | `/short-urls` | API key | Create a link. Body: `{"original_url": "...", "expiry_date": "YYYY-MM-DD HH:MM"}` (expiry optional, defaults to +30 days). Returns `201` with the link. |
-| GET | `/short-urls` | API key | List all links |
+| POST | `/short-urls` | API key | Create a link. Body: `{"original_url": "...", "expiry_date": "YYYY-MM-DD HH:MM"}` (expiry optional, defaults to +30 days). Only `http://`/`https://` URLs are accepted (a bare host is treated as `http`). Returns `201` with the link. |
+| GET | `/short-urls` | API key | List live links, paginated: `?limit=50&offset=0` (limit 1–100, default 50). Expired links are excluded |
 | GET | `/short-urls/:hashKey` | — | One link by hash. `404` unknown, `410` expired |
 | GET | `/redirect/:hashKey` | — | `302` to the original URL. `404` unknown, `410` expired |
 
 `GET /short-urls` and `POST /short-urls` require the `X-Api-Key` header when
 `API_KEY` is set; an empty key disables auth (the server logs a warning).
 Hashes are 11-character base62 tokens minted from `crypto/rand`.
+
+Expired links are removed by an hourly background sweep; until the sweep
+runs, a single expired link still answers `410` and is excluded from the
+list. The server sets 10s read/write and 60s idle timeouts and shuts down
+gracefully on SIGINT/SIGTERM. Rate-limit windows for IPs that stop calling
+are pruned once a minute, so the in-memory map can't grow forever.
 
 ## Config
 
