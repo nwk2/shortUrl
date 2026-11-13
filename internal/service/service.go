@@ -147,25 +147,28 @@ func isExpired(link model.ShortUrl) bool {
 
 // parseTimestamps parses an optional "YYYY-MM-DD HH:MM" expiry; empty
 // means 30 days after creation. Creation is truncated to the minute so
-// created and expiry stay on the same grid.
+// created and expiry stay on the same grid. Times are interpreted in the
+// server's local timezone, so "10:30" means 10:30 where the server runs
+// — parsing in UTC instead silently moved every expiry by the local
+// offset.
 func parseTimestamps(expiry string) (expiryTS, createdTS time.Time, err error) {
 	const layout = "2006-01-02 15:04"
 	now := time.Now().Format(layout)
 
 	if expiry != "" {
-		expiryTS, err = time.Parse(layout, expiry)
+		expiryTS, err = time.ParseInLocation(layout, expiry, time.Local)
 		if err != nil {
 			return time.Time{}, time.Time{}, err
 		}
 	} else {
-		expiryTS, err = time.Parse(layout, now)
+		expiryTS, err = time.ParseInLocation(layout, now, time.Local)
 		if err != nil {
 			return time.Time{}, time.Time{}, err
 		}
 		expiryTS = expiryTS.AddDate(0, 0, 30)
 	}
 
-	createdTS, err = time.Parse(layout, now)
+	createdTS, err = time.ParseInLocation(layout, now, time.Local)
 	return expiryTS, createdTS, err
 }
 

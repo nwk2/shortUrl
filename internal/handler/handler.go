@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -33,7 +34,9 @@ func (h *Handler) ListShortUrls(c *gin.Context) {
 	}
 	links, err := h.svc.List(c.Request.Context(), limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// Don't leak the database error to the client; log it here.
+		log.Println("ListShortUrls failed:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		return
 	}
 	c.JSON(http.StatusOK, links)
@@ -86,6 +89,11 @@ func (h *Handler) GetRedirect(c *gin.Context) {
 
 // POST /short-urls
 func (h *Handler) CreateShortUrl(c *gin.Context) {
+	// Cap the request body: a create is a URL plus an optional expiry,
+	// so anything past 1MB is abuse, not input. Without the cap, gin
+	// reads an unbounded body into memory.
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20)
+
 	var input model.CreateShortUrlInput
 	if err := c.BindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -117,6 +125,10 @@ func writeServiceError(c *gin.Context, err error) {
 	case errors.Is(err, service.ErrHashExhausted):
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate a unique short url, please retry"})
 	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// Anything unrecognised here is a server-side failure (usually
+		// the database). Log the real error, but answer with a generic
+		// message — the raw error can expose SQLite internals.
+		log.Println("Unhandled service error:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 	}
 }

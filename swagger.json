@@ -4,7 +4,7 @@
       "CreateShortUrlInput": {
         "properties": {
           "expiry_date": {
-            "description": "Optional expiry, format YYYY-MM-DD HH:MM. Defaults to 30 days after creation.",
+            "description": "Optional expiry, format YYYY-MM-DD HH:MM, interpreted in the server's local timezone. Defaults to 30 days after creation.",
             "example": "2026-12-12 21:00",
             "type": "string"
           },

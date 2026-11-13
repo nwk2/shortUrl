@@ -76,6 +76,58 @@ func createShortUrl(t *testing.T, r *gin.Engine, body string) model.ShortUrl {
 	return created
 }
 
+func TestCreateShortUrlBodyTooLarge(t *testing.T) {
+	r, _ := setupTestHandler(t)
+
+	// 1MB of padding inside the URL: over the cap before it even parses.
+	body := `{"original_url":"https://example.com/` + strings.Repeat("a", 1<<20) + `"}`
+	w := doRequest(t, r, http.MethodPost, "/short-urls", body)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("oversized body returned %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+func TestHandlerDBErrorIsGeneric(t *testing.T) {
+	// A store whose table was never migrated: every query fails with
+	// "no such table". The API must answer 500 with a generic message,
+	// not the SQLite error.
+	gin.SetMode(gin.TestMode)
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("failed to open test db: %v", err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("failed to get sql db: %v", err)
+	}
+	sqlDB.SetMaxOpenConns(1)
+	defer sqlDB.Close()
+
+	h := New(service.New(store.New(db), "http://localhost:8080/redirect/"))
+	r := gin.New()
+	r.GET("/short-urls", h.ListShortUrls)
+	r.POST("/short-urls", h.CreateShortUrl)
+
+	w := doRequest(t, r, http.MethodGet, "/short-urls", "")
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("list on broken db returned %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+	if strings.Contains(w.Body.String(), "no such table") {
+		t.Errorf("list leaked the database error: %s", w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "Internal server error") {
+		t.Errorf("list body = %s, want the generic message", w.Body.String())
+	}
+
+	w = doRequest(t, r, http.MethodPost, "/short-urls", `{"original_url":"https://example.com"}`)
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("create on broken db returned %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+	if strings.Contains(w.Body.String(), "no such table") {
+		t.Errorf("create leaked the database error: %s", w.Body.String())
+	}
+}
+
 func TestCreateShortUrl(t *testing.T) {
 	r, _ := setupTestHandler(t)
 
@@ -101,7 +153,8 @@ func TestCreateShortUrlCustomExpiry(t *testing.T) {
 
 	created := createShortUrl(t, r, `{"original_url":"https://example.com","expiry_date":"2030-06-15 10:30"}`)
 
-	want, _ := time.Parse("2006-01-02 15:04", "2030-06-15 10:30")
+	// Parsed in the server's local timezone, like the implementation does.
+	want, _ := time.ParseInLocation("2006-01-02 15:04", "2030-06-15 10:30", time.Local)
 	if !created.ExpiryDate.Equal(want) {
 		t.Errorf("expiry_date = %v, want %v", created.ExpiryDate, want)
 	}

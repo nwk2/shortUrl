@@ -55,6 +55,26 @@ func TestGenerateHash(t *testing.T) {
 	}
 }
 
+func TestParseTimestampsUsesLocalTime(t *testing.T) {
+	// time.Local is process-global; swap it for this test and restore it.
+	orig := time.Local
+	time.Local = time.FixedZone("SGT", 8*3600)
+	defer func() { time.Local = orig }()
+
+	expiry, _, err := parseTimestamps("2030-06-15 10:30")
+	if err != nil {
+		t.Fatalf("parseTimestamps returned error: %v", err)
+	}
+	// 10:30 in +08:00 is 02:30 UTC. Under the old UTC parsing it would
+	// have been 10:30 UTC — eight hours later than the user meant.
+	if got := expiry.Format("2006-01-02 15:04 -07:00"); got != "2030-06-15 10:30 +08:00" {
+		t.Errorf("expiry = %q, want 10:30 in +08:00", got)
+	}
+	if got := expiry.UTC().Format("15:04"); got != "02:30" {
+		t.Errorf("expiry in UTC = %q, want 02:30", got)
+	}
+}
+
 func TestParseTimestampsDefault(t *testing.T) {
 	expiry, created, err := parseTimestamps("")
 	if err != nil {
@@ -70,7 +90,8 @@ func TestParseTimestampsCustom(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseTimestamps returned error: %v", err)
 	}
-	want, _ := time.Parse("2006-01-02 15:04", "2030-06-15 10:30")
+	// Parsed in local time, like the implementation does.
+	want, _ := time.ParseInLocation("2006-01-02 15:04", "2030-06-15 10:30", time.Local)
 	if !expiry.Equal(want) {
 		t.Errorf("expiry = %v, want %v", expiry, want)
 	}
