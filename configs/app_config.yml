@@ -2,3 +2,5 @@ APP_HOSTNAME: "http://localhost:8080/redirect/"
 CORS_ALLOWED_ORIGINS: ["*"]
 RATE_LIMIT_PER_MINUTE: 100
 API_KEY: ""
+DB_PATH: "test.db"
+LOG_LEVEL: "info"
