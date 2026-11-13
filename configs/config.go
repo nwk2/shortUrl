@@ -6,6 +6,13 @@ import (
 
 type AppConfig struct {
 	APP_HOSTNAME string `mapstructure:"APP_HOSTNAME"`
+	// Origins allowed to call the API from a browser. ["*"] allows any
+	// origin (no credentials); a list of explicit origins echoes the
+	// matching one back with credentials allowed.
+	CORS_ALLOWED_ORIGINS []string `mapstructure:"CORS_ALLOWED_ORIGINS"`
+	// Max requests per minute per client IP, across all routes.
+	// 0 or negative disables rate limiting.
+	RATE_LIMIT_PER_MINUTE int `mapstructure:"RATE_LIMIT_PER_MINUTE"`
 }
 
 var configPath = "./configs"

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 
 	"shortUrl/api"
@@ -11,8 +12,18 @@ import (
 )
 
 func main() {
+	appConfig, err := configs.LoadAppConfig()
+	if err != nil {
+		log.Println("Failed to load app config, using defaults:", err)
+		appConfig = configs.AppConfig{
+			CORS_ALLOWED_ORIGINS:  []string{"*"},
+			RATE_LIMIT_PER_MINUTE: 100,
+		}
+	}
+
 	r := gin.Default()
-	r.Use(middlewares.CorsMiddleware())
+	r.Use(middlewares.CorsMiddleware(appConfig.CORS_ALLOWED_ORIGINS))
+	r.Use(middlewares.RateLimitMiddleware(appConfig.RATE_LIMIT_PER_MINUTE))
 
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"res": "pong"})
