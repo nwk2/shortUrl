@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 
 	"shortUrl/configs"
 	"shortUrl/models"
@@ -33,14 +33,22 @@ func TestMain(m *testing.M) {
 // larger than one would see an empty database on the second connection.
 func setupTestDB(t *testing.T) {
 	t.Helper()
-	db, err := gorm.Open("sqlite3", ":memory:")
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("failed to open test db: %v", err)
 	}
-	db.DB().SetMaxOpenConns(1)
-	db.AutoMigrate(&models.ShortUrl{})
+	// gorm v2: DB() returns (*sql.DB, error) instead of *sql.DB.
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("failed to get sql db: %v", err)
+	}
+	sqlDB.SetMaxOpenConns(1)
+	// gorm v2: AutoMigrate returns an error instead of *gorm.DB.
+	if err := db.AutoMigrate(&models.ShortUrl{}); err != nil {
+		t.Fatalf("failed to migrate test db: %v", err)
+	}
 	configs.DB = db
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { sqlDB.Close() })
 }
 
 func setupRouter() *gin.Engine {

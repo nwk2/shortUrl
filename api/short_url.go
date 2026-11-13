@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"hash/fnv"
 	"log"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"net/url"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	"shortUrl/configs"
 	"shortUrl/models"
@@ -105,7 +107,8 @@ func CreateShortUrl(c *gin.Context) {
 		hashValueStr = strconv.FormatUint(hash(hashKey, validatedUrl.String()), 10)
 
 		var existing models.ShortUrl
-		if configs.DB.Where("hash_key = ?", hashValueStr).First(&existing).RecordNotFound() {
+		err := configs.DB.Where("hash_key = ?", hashValueStr).First(&existing).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			break
 		}
 		hashValueStr = ""
