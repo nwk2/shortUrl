@@ -92,3 +92,48 @@ func TestRateLimitDisabled(t *testing.T) {
 		}
 	}
 }
+
+func TestApiKeyAuth(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(ApiKeyAuth("secret"))
+	r.POST("/short-urls", func(c *gin.Context) { c.Status(http.StatusCreated) })
+
+	// No header -> 401.
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/short-urls", nil))
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("no header returned %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+
+	// Wrong key -> 401.
+	w = httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/short-urls", nil)
+	req.Header.Set("X-Api-Key", "wrong")
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("wrong key returned %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+
+	// Correct key -> through.
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodPost, "/short-urls", nil)
+	req.Header.Set("X-Api-Key", "secret")
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Errorf("correct key returned %d, want %d", w.Code, http.StatusCreated)
+	}
+}
+
+func TestApiKeyAuthDisabled(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(ApiKeyAuth(""))
+	r.POST("/short-urls", func(c *gin.Context) { c.Status(http.StatusCreated) })
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/short-urls", nil))
+	if w.Code != http.StatusCreated {
+		t.Errorf("empty key returned %d, want %d (auth disabled)", w.Code, http.StatusCreated)
+	}
+}

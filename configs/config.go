@@ -13,6 +13,10 @@ type AppConfig struct {
 	// Max requests per minute per client IP, across all routes.
 	// 0 or negative disables rate limiting.
 	RATE_LIMIT_PER_MINUTE int `mapstructure:"RATE_LIMIT_PER_MINUTE"`
+	// Shared secret for the create/list endpoints, checked against the
+	// X-Api-Key header. Empty disables auth (endpoints are open) — the
+	// server logs a warning at startup in that case.
+	API_KEY string `mapstructure:"API_KEY"`
 }
 
 var configPath = "./configs"

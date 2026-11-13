@@ -154,6 +154,17 @@
     "/short-urls": {
       "get": {
         "operationId": "listShortUrls",
+        "parameters": [
+          {
+            "description": "Shared secret for the create/list endpoints (API_KEY in app config).",
+            "in": "header",
+            "name": "X-Api-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -174,6 +185,17 @@
       "post": {
         "description": "Creates a short URL for the given original URL. If expiry_date is omitted it defaults to 30 days after creation. Expiry format is YYYY-MM-DD HH:MM.",
         "operationId": "createShortUrl",
+        "parameters": [
+          {
+            "description": "Shared secret for the create/list endpoints (API_KEY in app config).",
+            "in": "header",
+            "name": "X-Api-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
