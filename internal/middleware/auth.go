@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"crypto/subtle"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -14,7 +15,9 @@ func ApiKeyAuth(apiKey string) gin.HandlerFunc {
 		return func(c *gin.Context) { c.Next() }
 	}
 	return func(c *gin.Context) {
-		if c.GetHeader("X-Api-Key") != apiKey {
+		// Constant-time compare: == short-circuits and leaks how many
+		// leading bytes matched through timing.
+		if subtle.ConstantTimeCompare([]byte(c.GetHeader("X-Api-Key")), []byte(apiKey)) != 1 {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
 		}
