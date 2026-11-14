@@ -41,7 +41,7 @@ func setupTestHandler(t *testing.T) (*gin.Engine, *store.Store) {
 	if err := db.AutoMigrate(&model.ShortUrl{}); err != nil {
 		t.Fatalf("failed to migrate test db: %v", err)
 	}
-	t.Cleanup(func() { sqlDB.Close() })
+	t.Cleanup(func() { _ = sqlDB.Close() })
 
 	st := store.New(db)
 	h := New(service.New(st, "http://localhost:8080/redirect/"))
@@ -101,7 +101,7 @@ func TestHandlerDBErrorIsGeneric(t *testing.T) {
 		t.Fatalf("failed to get sql db: %v", err)
 	}
 	sqlDB.SetMaxOpenConns(1)
-	defer sqlDB.Close()
+	defer func() { _ = sqlDB.Close() }()
 
 	h := New(service.New(store.New(db), "http://localhost:8080/redirect/"))
 	r := gin.New()

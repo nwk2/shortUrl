@@ -1,0 +1,20 @@
+# golangci-lint v2 config. Deliberately a small set: every linter here is
+# green on the current code, so the CI lint job fails only on new issues.
+# revive is NOT enabled: its var-naming rule flags the Url initialisms
+# (ShortUrl, OriginalUrl, ApiKeyAuth), which are a known wart pending a
+# rename decision, not something to fail CI over today.
+version: "2"
+run:
+  timeout: 5m
+linters:
+  default: none
+  enable:
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - errcheck
+formatters:
+  enable:
+    - gofmt
+    - goimports

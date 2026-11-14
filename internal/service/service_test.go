@@ -31,7 +31,7 @@ func setupTestService(t *testing.T) *Service {
 	if err := db.AutoMigrate(&model.ShortUrl{}); err != nil {
 		t.Fatalf("failed to migrate test db: %v", err)
 	}
-	t.Cleanup(func() { sqlDB.Close() })
+	t.Cleanup(func() { _ = sqlDB.Close() })
 	return New(store.New(db), "http://localhost:8080/redirect/")
 }
 
@@ -214,7 +214,7 @@ func TestServiceCreateConcurrent(t *testing.T) {
 	if err := db.AutoMigrate(&model.ShortUrl{}); err != nil {
 		t.Fatalf("failed to migrate test db: %v", err)
 	}
-	t.Cleanup(func() { sqlDB.Close() })
+	t.Cleanup(func() { _ = sqlDB.Close() })
 	svc := New(store.New(db), "http://localhost:8080/redirect/")
 
 	const n = 50
