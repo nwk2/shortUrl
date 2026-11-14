@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -41,6 +42,38 @@ func insertLink(t *testing.T, st *Store, hashKey string, expiry time.Time) {
 	}
 	if err := st.Create(context.Background(), &link); err != nil {
 		t.Fatalf("failed to insert link %q: %v", hashKey, err)
+	}
+}
+
+func TestOpenSetsWALAndBusyTimeout(t *testing.T) {
+	// Open is the production path: it must enable WAL mode and a busy
+	// timeout, so a burst of parallel creates waits on a locked
+	// database instead of failing with "database is locked".
+	path := filepath.Join(t.TempDir(), "test.db")
+	st, err := Open(path, "silent")
+	if err != nil {
+		t.Fatalf("Open returned error: %v", err)
+	}
+	sqlDB, err := st.db.DB()
+	if err != nil {
+		t.Fatalf("failed to get sql db: %v", err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+
+	var mode string
+	if err := st.db.Raw("PRAGMA journal_mode").Scan(&mode).Error; err != nil {
+		t.Fatalf("PRAGMA journal_mode returned error: %v", err)
+	}
+	if mode != "wal" {
+		t.Errorf("journal_mode = %q, want %q", mode, "wal")
+	}
+
+	var timeout int
+	if err := st.db.Raw("PRAGMA busy_timeout").Scan(&timeout).Error; err != nil {
+		t.Fatalf("PRAGMA busy_timeout returned error: %v", err)
+	}
+	if timeout != 5000 {
+		t.Errorf("busy_timeout = %d, want 5000", timeout)
 	}
 }
 

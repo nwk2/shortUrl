@@ -32,8 +32,16 @@ type Store struct {
 // Open connects to the SQLite file at dbPath (created if missing) and
 // runs AutoMigrate. logLevel is one of info, warn, error, silent;
 // anything else falls back to info.
+//
+// The DSN enables WAL mode and a 5s busy timeout. WAL lets readers run
+// concurrently with the writer; the busy timeout makes a write that
+// lands while the database is locked wait instead of failing at once
+// with "database is locked" (the default timeout is 0). Without it, a
+// burst of parallel creates could 500. WAL keeps -wal and -shm sidecar
+// files next to the database — a file copy for backup must include them,
+// or checkpoint first.
 func Open(dbPath, logLevel string) (*Store, error) {
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+	db, err := gorm.Open(sqlite.Open(dbPath+"?_journal_mode=WAL&_busy_timeout=5000"), &gorm.Config{
 		Logger: logger.Default.LogMode(parseLogLevel(logLevel)),
 	})
 	if err != nil {
