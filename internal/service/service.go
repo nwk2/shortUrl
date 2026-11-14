@@ -164,7 +164,7 @@ func isExpired(link model.ShortUrl) bool {
 // offset.
 func parseTimestamps(expiry string) (expiryTS, createdTS time.Time, err error) {
 	const layout = "2006-01-02 15:04"
-	now := time.Now().Format(layout)
+	now := time.Now().Truncate(time.Minute)
 
 	if expiry != "" {
 		expiryTS, err = time.ParseInLocation(layout, expiry, time.Local)
@@ -172,15 +172,10 @@ func parseTimestamps(expiry string) (expiryTS, createdTS time.Time, err error) {
 			return time.Time{}, time.Time{}, err
 		}
 	} else {
-		expiryTS, err = time.ParseInLocation(layout, now, time.Local)
-		if err != nil {
-			return time.Time{}, time.Time{}, err
-		}
-		expiryTS = expiryTS.AddDate(0, 0, 30)
+		expiryTS = now.AddDate(0, 0, 30)
 	}
 
-	createdTS, err = time.ParseInLocation(layout, now, time.Local)
-	return expiryTS, createdTS, err
+	return expiryTS, now, nil
 }
 
 // generateHash mints a length-character base58 token from crypto/rand.
