@@ -68,16 +68,27 @@ func main() {
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
+	// ListenAndServe runs in a goroutine so main can wait for a shutdown
+	// signal; a startup failure is reported on serverErr instead of
+	// log.Fatal, which would exit the process without running deferred
+	// cleanup.
+	serverErr := make(chan error, 1)
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server failed: %v", err)
+			serverErr <- err
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Println("Shutting down...")
+	select {
+	case <-quit:
+		log.Println("Shutting down...")
+	case err := <-serverErr:
+		log.Println("Server failed:", err)
+		close(stopSweeper)
+		os.Exit(1)
+	}
 	close(stopSweeper)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
