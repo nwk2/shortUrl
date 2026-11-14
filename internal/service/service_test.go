@@ -28,7 +28,7 @@ func setupTestService(t *testing.T) *Service {
 		t.Fatalf("failed to get sql db: %v", err)
 	}
 	sqlDB.SetMaxOpenConns(1)
-	if err := db.AutoMigrate(&model.ShortUrl{}); err != nil {
+	if err := db.AutoMigrate(&model.ShortURL{}); err != nil {
 		t.Fatalf("failed to migrate test db: %v", err)
 	}
 	t.Cleanup(func() { _ = sqlDB.Close() })
@@ -94,9 +94,9 @@ func TestServiceCreateRetriesHashConflict(t *testing.T) {
 	svc := setupTestService(t)
 	ctx := context.Background()
 
-	taken := model.ShortUrl{
-		ShortUrl:    "http://localhost:8080/redirect/1111111",
-		OriginalUrl: "https://example.com/taken",
+	taken := model.ShortURL{
+		ShortURL:    "http://localhost:8080/redirect/1111111",
+		OriginalURL: "https://example.com/taken",
 		HashKey:     "1111111",
 		CreatedDate: time.Now(),
 		ExpiryDate:  time.Now().Add(24 * time.Hour),
@@ -130,9 +130,9 @@ func TestServiceCreateGrowsHashLength(t *testing.T) {
 	svc := setupTestService(t)
 	ctx := context.Background()
 
-	taken := model.ShortUrl{
-		ShortUrl:    "http://localhost:8080/redirect/1111111",
-		OriginalUrl: "https://example.com/taken",
+	taken := model.ShortURL{
+		ShortURL:    "http://localhost:8080/redirect/1111111",
+		OriginalURL: "https://example.com/taken",
 		HashKey:     "1111111",
 		CreatedDate: time.Now(),
 		ExpiryDate:  time.Now().Add(24 * time.Hour),
@@ -168,9 +168,9 @@ func TestServiceCreateHashExhausted(t *testing.T) {
 	svc := setupTestService(t)
 	ctx := context.Background()
 
-	taken := model.ShortUrl{
-		ShortUrl:    "http://localhost:8080/redirect/1111111",
-		OriginalUrl: "https://example.com/taken",
+	taken := model.ShortURL{
+		ShortURL:    "http://localhost:8080/redirect/1111111",
+		OriginalURL: "https://example.com/taken",
 		HashKey:     "1111111",
 		CreatedDate: time.Now(),
 		ExpiryDate:  time.Now().Add(24 * time.Hour),
@@ -211,7 +211,7 @@ func TestServiceCreateConcurrent(t *testing.T) {
 		t.Fatalf("failed to get sql db: %v", err)
 	}
 	sqlDB.SetMaxOpenConns(8)
-	if err := db.AutoMigrate(&model.ShortUrl{}); err != nil {
+	if err := db.AutoMigrate(&model.ShortURL{}); err != nil {
 		t.Fatalf("failed to migrate test db: %v", err)
 	}
 	t.Cleanup(func() { _ = sqlDB.Close() })
@@ -257,9 +257,9 @@ func TestServiceGetByHashOldLength(t *testing.T) {
 	svc := setupTestService(t)
 	ctx := context.Background()
 
-	old := model.ShortUrl{
-		ShortUrl:    "http://localhost:8080/redirect/9I3BXIwDa44",
-		OriginalUrl: "https://example.com/old",
+	old := model.ShortURL{
+		ShortURL:    "http://localhost:8080/redirect/9I3BXIwDa44",
+		OriginalURL: "https://example.com/old",
 		HashKey:     "9I3BXIwDa44",
 		CreatedDate: time.Now(),
 		ExpiryDate:  time.Now().Add(24 * time.Hour),
@@ -271,8 +271,8 @@ func TestServiceGetByHashOldLength(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByHash returned error: %v", err)
 	}
-	if got.OriginalUrl != "https://example.com/old" {
-		t.Errorf("original_url = %q", got.OriginalUrl)
+	if got.OriginalURL != "https://example.com/old" {
+		t.Errorf("original_url = %q", got.OriginalURL)
 	}
 }
 
@@ -345,9 +345,9 @@ func TestServiceResolveRejectsStoredScheme(t *testing.T) {
 
 	// A row written before the allowlist (or around it) must not be
 	// usable as a redirector either.
-	stored := model.ShortUrl{
-		ShortUrl:    "http://localhost:8080/redirect/oldbad1",
-		OriginalUrl: "javascript:alert(1)",
+	stored := model.ShortURL{
+		ShortURL:    "http://localhost:8080/redirect/oldbad1",
+		OriginalURL: "javascript:alert(1)",
 		HashKey:     "oldbad1",
 		CreatedDate: time.Now(),
 		ExpiryDate:  time.Now().Add(24 * time.Hour),
@@ -371,11 +371,11 @@ func TestServiceCreate(t *testing.T) {
 	if link.HashKey == "" {
 		t.Error("hash_key is empty")
 	}
-	if !strings.HasSuffix(link.ShortUrl, link.HashKey) {
-		t.Errorf("short_url %q does not end with hash_key %q", link.ShortUrl, link.HashKey)
+	if !strings.HasSuffix(link.ShortURL, link.HashKey) {
+		t.Errorf("short_url %q does not end with hash_key %q", link.ShortURL, link.HashKey)
 	}
-	if link.OriginalUrl != "https://example.com/some/path" {
-		t.Errorf("original_url = %q", link.OriginalUrl)
+	if link.OriginalURL != "https://example.com/some/path" {
+		t.Errorf("original_url = %q", link.OriginalURL)
 	}
 
 	got, err := svc.GetByHash(ctx, link.HashKey)

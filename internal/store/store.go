@@ -39,7 +39,7 @@ func Open(dbPath, logLevel string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := db.AutoMigrate(&model.ShortUrl{}); err != nil {
+	if err := db.AutoMigrate(&model.ShortURL{}); err != nil {
 		return nil, err
 	}
 	return New(db), nil
@@ -64,7 +64,7 @@ func parseLogLevel(s string) logger.LogLevel {
 	}
 }
 
-func (s *Store) Create(ctx context.Context, link *model.ShortUrl) error {
+func (s *Store) Create(ctx context.Context, link *model.ShortURL) error {
 	err := s.db.WithContext(ctx).Create(link).Error
 	if err != nil && isUniqueViolation(err) {
 		return ErrHashConflict
@@ -84,17 +84,17 @@ func isUniqueViolation(err error) bool {
 	return false
 }
 
-func (s *Store) GetByHash(ctx context.Context, hashKey string) (model.ShortUrl, error) {
-	var link model.ShortUrl
+func (s *Store) GetByHash(ctx context.Context, hashKey string) (model.ShortURL, error) {
+	var link model.ShortURL
 	err := s.db.WithContext(ctx).Where("hash_key = ?", hashKey).First(&link).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return model.ShortUrl{}, ErrNotFound
+		return model.ShortURL{}, ErrNotFound
 	}
 	return link, err
 }
 
-func (s *Store) List(ctx context.Context, limit, offset int) ([]model.ShortUrl, error) {
-	var links []model.ShortUrl
+func (s *Store) List(ctx context.Context, limit, offset int) ([]model.ShortURL, error) {
+	var links []model.ShortURL
 	// Only live links, in creation order so pagination is stable.
 	err := s.db.WithContext(ctx).Where("expiry_date >= ?", time.Now()).Order("id ASC").Limit(limit).Offset(offset).Find(&links).Error
 	return links, err
@@ -104,12 +104,12 @@ func (s *Store) List(ctx context.Context, limit, offset int) ([]model.ShortUrl, 
 // removed. The hourly sweeper in main calls this; it is also what lets
 // tests prove an expired link is really gone.
 func (s *Store) DeleteExpired(ctx context.Context) (int64, error) {
-	res := s.db.WithContext(ctx).Where("expiry_date < ?", time.Now()).Delete(&model.ShortUrl{})
+	res := s.db.WithContext(ctx).Where("expiry_date < ?", time.Now()).Delete(&model.ShortURL{})
 	return res.RowsAffected, res.Error
 }
 
 // UpdateExpiry moves a link's expiry date. Used by tests to build an
 // expired link without reaching around the Store.
 func (s *Store) UpdateExpiry(ctx context.Context, hashKey string, expiry time.Time) error {
-	return s.db.WithContext(ctx).Model(&model.ShortUrl{}).Where("hash_key = ?", hashKey).Update("expiry_date", expiry).Error
+	return s.db.WithContext(ctx).Model(&model.ShortURL{}).Where("hash_key = ?", hashKey).Update("expiry_date", expiry).Error
 }

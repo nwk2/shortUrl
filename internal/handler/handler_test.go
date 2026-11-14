@@ -38,7 +38,7 @@ func setupTestHandler(t *testing.T) (*gin.Engine, *store.Store) {
 	}
 	sqlDB.SetMaxOpenConns(1)
 	// gorm v2: AutoMigrate returns an error instead of *gorm.DB.
-	if err := db.AutoMigrate(&model.ShortUrl{}); err != nil {
+	if err := db.AutoMigrate(&model.ShortURL{}); err != nil {
 		t.Fatalf("failed to migrate test db: %v", err)
 	}
 	t.Cleanup(func() { _ = sqlDB.Close() })
@@ -47,9 +47,9 @@ func setupTestHandler(t *testing.T) (*gin.Engine, *store.Store) {
 	h := New(service.New(st, "http://localhost:8080/redirect/"))
 
 	r := gin.New()
-	r.GET("/short-urls", h.ListShortUrls)
-	r.GET("/short-urls/:hashKey", h.GetShortUrlByHashKey)
-	r.POST("/short-urls", h.CreateShortUrl)
+	r.GET("/short-urls", h.ListShortURLs)
+	r.GET("/short-urls/:hashKey", h.GetShortURLByHashKey)
+	r.POST("/short-urls", h.CreateShortURL)
 	r.GET("/redirect/:hashKey", h.GetRedirect)
 	return r, st
 }
@@ -63,20 +63,20 @@ func doRequest(t *testing.T, r *gin.Engine, method, path, body string) *httptest
 	return w
 }
 
-func createShortUrl(t *testing.T, r *gin.Engine, body string) model.ShortUrl {
+func createShortURL(t *testing.T, r *gin.Engine, body string) model.ShortURL {
 	t.Helper()
 	w := doRequest(t, r, http.MethodPost, "/short-urls", body)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create returned %d, want %d: %s", w.Code, http.StatusCreated, w.Body.String())
 	}
-	var created model.ShortUrl
+	var created model.ShortURL
 	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
-		t.Fatalf("create response is not a ShortUrl: %v", err)
+		t.Fatalf("create response is not a ShortURL: %v", err)
 	}
 	return created
 }
 
-func TestCreateShortUrlBodyTooLarge(t *testing.T) {
+func TestCreateShortURLBodyTooLarge(t *testing.T) {
 	r, _ := setupTestHandler(t)
 
 	// 1MB of padding inside the URL: over the cap before it even parses.
@@ -105,8 +105,8 @@ func TestHandlerDBErrorIsGeneric(t *testing.T) {
 
 	h := New(service.New(store.New(db), "http://localhost:8080/redirect/"))
 	r := gin.New()
-	r.GET("/short-urls", h.ListShortUrls)
-	r.POST("/short-urls", h.CreateShortUrl)
+	r.GET("/short-urls", h.ListShortURLs)
+	r.POST("/short-urls", h.CreateShortURL)
 
 	w := doRequest(t, r, http.MethodGet, "/short-urls", "")
 	if w.Code != http.StatusInternalServerError {
@@ -128,19 +128,19 @@ func TestHandlerDBErrorIsGeneric(t *testing.T) {
 	}
 }
 
-func TestCreateShortUrl(t *testing.T) {
+func TestCreateShortURL(t *testing.T) {
 	r, _ := setupTestHandler(t)
 
-	created := createShortUrl(t, r, `{"original_url":"https://example.com/some/path"}`)
+	created := createShortURL(t, r, `{"original_url":"https://example.com/some/path"}`)
 
 	if created.HashKey == "" {
 		t.Error("hash_key is empty")
 	}
-	if !strings.HasSuffix(created.ShortUrl, created.HashKey) {
-		t.Errorf("short_url %q does not end with hash_key %q", created.ShortUrl, created.HashKey)
+	if !strings.HasSuffix(created.ShortURL, created.HashKey) {
+		t.Errorf("short_url %q does not end with hash_key %q", created.ShortURL, created.HashKey)
 	}
-	if created.OriginalUrl != "https://example.com/some/path" {
-		t.Errorf("original_url = %q", created.OriginalUrl)
+	if created.OriginalURL != "https://example.com/some/path" {
+		t.Errorf("original_url = %q", created.OriginalURL)
 	}
 	// No expiry given: defaults to exactly 30 days after creation.
 	if got := created.ExpiryDate.Sub(created.CreatedDate); got != 30*24*time.Hour {
@@ -148,10 +148,10 @@ func TestCreateShortUrl(t *testing.T) {
 	}
 }
 
-func TestCreateShortUrlCustomExpiry(t *testing.T) {
+func TestCreateShortURLCustomExpiry(t *testing.T) {
 	r, _ := setupTestHandler(t)
 
-	created := createShortUrl(t, r, `{"original_url":"https://example.com","expiry_date":"2030-06-15 10:30"}`)
+	created := createShortURL(t, r, `{"original_url":"https://example.com","expiry_date":"2030-06-15 10:30"}`)
 
 	// Parsed in the server's local timezone, like the implementation does.
 	want, _ := time.ParseInLocation("2006-01-02 15:04", "2030-06-15 10:30", time.Local)
@@ -160,7 +160,7 @@ func TestCreateShortUrlCustomExpiry(t *testing.T) {
 	}
 }
 
-func TestCreateShortUrlEmptyBody(t *testing.T) {
+func TestCreateShortURLEmptyBody(t *testing.T) {
 	r, _ := setupTestHandler(t)
 
 	w := doRequest(t, r, http.MethodPost, "/short-urls", `{}`)
@@ -169,7 +169,7 @@ func TestCreateShortUrlEmptyBody(t *testing.T) {
 	}
 }
 
-func TestCreateShortUrlInvalidURL(t *testing.T) {
+func TestCreateShortURLInvalidURL(t *testing.T) {
 	r, _ := setupTestHandler(t)
 
 	w := doRequest(t, r, http.MethodPost, "/short-urls", `{"original_url":"%zz"}`)
@@ -178,7 +178,7 @@ func TestCreateShortUrlInvalidURL(t *testing.T) {
 	}
 }
 
-func TestCreateShortUrlBadExpiryFormat(t *testing.T) {
+func TestCreateShortURLBadExpiryFormat(t *testing.T) {
 	r, _ := setupTestHandler(t)
 
 	w := doRequest(t, r, http.MethodPost, "/short-urls", `{"original_url":"https://example.com","expiry_date":"not-a-date"}`)
@@ -187,7 +187,7 @@ func TestCreateShortUrlBadExpiryFormat(t *testing.T) {
 	}
 }
 
-func TestCreateShortUrlPastExpiry(t *testing.T) {
+func TestCreateShortURLPastExpiry(t *testing.T) {
 	r, _ := setupTestHandler(t)
 
 	w := doRequest(t, r, http.MethodPost, "/short-urls", `{"original_url":"https://example.com","expiry_date":"2020-01-01 00:00"}`)
@@ -196,10 +196,10 @@ func TestCreateShortUrlPastExpiry(t *testing.T) {
 	}
 }
 
-func TestGetShortUrlByHashKey(t *testing.T) {
+func TestGetShortURLByHashKey(t *testing.T) {
 	r, _ := setupTestHandler(t)
 
-	created := createShortUrl(t, r, `{"original_url":"https://example.com/some/path"}`)
+	created := createShortURL(t, r, `{"original_url":"https://example.com/some/path"}`)
 
 	w := doRequest(t, r, http.MethodGet, "/short-urls/"+created.HashKey, "")
 	if w.Code != http.StatusOK {
@@ -210,16 +210,16 @@ func TestGetShortUrlByHashKey(t *testing.T) {
 	if strings.Contains(w.Body.String(), `"data":`) {
 		t.Errorf("get response is wrapped in a data envelope: %s", w.Body.String())
 	}
-	var got model.ShortUrl
+	var got model.ShortURL
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
-		t.Fatalf("get response is not a ShortUrl: %v", err)
+		t.Fatalf("get response is not a ShortURL: %v", err)
 	}
 	if got.HashKey != created.HashKey {
 		t.Errorf("hash_key = %q, want %q", got.HashKey, created.HashKey)
 	}
 }
 
-func TestGetShortUrlByHashKeyNotFound(t *testing.T) {
+func TestGetShortURLByHashKeyNotFound(t *testing.T) {
 	r, _ := setupTestHandler(t)
 
 	w := doRequest(t, r, http.MethodGet, "/short-urls/doesnotexist", "")
@@ -235,10 +235,10 @@ func expireLink(t *testing.T, st *store.Store, hashKey string) {
 	}
 }
 
-func TestGetShortUrlExpired(t *testing.T) {
+func TestGetShortURLExpired(t *testing.T) {
 	r, st := setupTestHandler(t)
 
-	created := createShortUrl(t, r, `{"original_url":"https://example.com/some/path"}`)
+	created := createShortURL(t, r, `{"original_url":"https://example.com/some/path"}`)
 	expireLink(t, st, created.HashKey)
 
 	w := doRequest(t, r, http.MethodGet, "/short-urls/"+created.HashKey, "")
@@ -250,7 +250,7 @@ func TestGetShortUrlExpired(t *testing.T) {
 func TestRedirect(t *testing.T) {
 	r, _ := setupTestHandler(t)
 
-	created := createShortUrl(t, r, `{"original_url":"https://example.com/some/path"}`)
+	created := createShortURL(t, r, `{"original_url":"https://example.com/some/path"}`)
 
 	w := doRequest(t, r, http.MethodGet, "/redirect/"+created.HashKey, "")
 	if w.Code != http.StatusFound {
@@ -273,7 +273,7 @@ func TestRedirectNotFound(t *testing.T) {
 func TestRedirectExpired(t *testing.T) {
 	r, st := setupTestHandler(t)
 
-	created := createShortUrl(t, r, `{"original_url":"https://example.com/some/path"}`)
+	created := createShortURL(t, r, `{"original_url":"https://example.com/some/path"}`)
 	expireLink(t, st, created.HashKey)
 
 	w := doRequest(t, r, http.MethodGet, "/redirect/"+created.HashKey, "")
@@ -282,21 +282,21 @@ func TestRedirectExpired(t *testing.T) {
 	}
 }
 
-func TestListShortUrlsPagination(t *testing.T) {
+func TestListShortURLsPagination(t *testing.T) {
 	r, _ := setupTestHandler(t)
 
-	createShortUrl(t, r, `{"original_url":"https://example.com/one"}`)
-	createShortUrl(t, r, `{"original_url":"https://example.com/two"}`)
-	createShortUrl(t, r, `{"original_url":"https://example.com/three"}`)
+	createShortURL(t, r, `{"original_url":"https://example.com/one"}`)
+	createShortURL(t, r, `{"original_url":"https://example.com/two"}`)
+	createShortURL(t, r, `{"original_url":"https://example.com/three"}`)
 
 	// First page: two entries.
 	w := doRequest(t, r, http.MethodGet, "/short-urls?limit=2", "")
 	if w.Code != http.StatusOK {
 		t.Fatalf("list returned %d, want %d: %s", w.Code, http.StatusOK, w.Body.String())
 	}
-	var page []model.ShortUrl
+	var page []model.ShortURL
 	if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil {
-		t.Fatalf("list response is not a ShortUrl array: %v", err)
+		t.Fatalf("list response is not a ShortURL array: %v", err)
 	}
 	if len(page) != 2 {
 		t.Fatalf("page 1 returned %d entries, want 2", len(page))
@@ -305,7 +305,7 @@ func TestListShortUrlsPagination(t *testing.T) {
 	// Second page: the remaining entry.
 	w = doRequest(t, r, http.MethodGet, "/short-urls?limit=2&offset=2", "")
 	if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil {
-		t.Fatalf("list response is not a ShortUrl array: %v", err)
+		t.Fatalf("list response is not a ShortURL array: %v", err)
 	}
 	if len(page) != 1 {
 		t.Errorf("page 2 returned %d entries, want 1", len(page))
@@ -314,14 +314,14 @@ func TestListShortUrlsPagination(t *testing.T) {
 	// No params: the default page holds all three.
 	w = doRequest(t, r, http.MethodGet, "/short-urls", "")
 	if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil {
-		t.Fatalf("list response is not a ShortUrl array: %v", err)
+		t.Fatalf("list response is not a ShortURL array: %v", err)
 	}
 	if len(page) != 3 {
 		t.Errorf("default list returned %d entries, want 3", len(page))
 	}
 }
 
-func TestListShortUrlsInvalidPagination(t *testing.T) {
+func TestListShortURLsInvalidPagination(t *testing.T) {
 	r, _ := setupTestHandler(t)
 
 	for _, path := range []string{
@@ -338,38 +338,38 @@ func TestListShortUrlsInvalidPagination(t *testing.T) {
 	}
 }
 
-func TestListShortUrlsExcludesExpired(t *testing.T) {
+func TestListShortURLsExcludesExpired(t *testing.T) {
 	r, st := setupTestHandler(t)
 
-	created := createShortUrl(t, r, `{"original_url":"https://example.com/some/path"}`)
+	created := createShortURL(t, r, `{"original_url":"https://example.com/some/path"}`)
 	expireLink(t, st, created.HashKey)
 
 	w := doRequest(t, r, http.MethodGet, "/short-urls", "")
 	if w.Code != http.StatusOK {
 		t.Fatalf("list returned %d, want %d: %s", w.Code, http.StatusOK, w.Body.String())
 	}
-	var list []model.ShortUrl
+	var list []model.ShortURL
 	if err := json.Unmarshal(w.Body.Bytes(), &list); err != nil {
-		t.Fatalf("list response is not a ShortUrl array: %v", err)
+		t.Fatalf("list response is not a ShortURL array: %v", err)
 	}
 	if len(list) != 0 {
 		t.Errorf("list returned %d entries, want 0 (expired links are excluded)", len(list))
 	}
 }
 
-func TestListShortUrls(t *testing.T) {
+func TestListShortURLs(t *testing.T) {
 	r, _ := setupTestHandler(t)
 
-	createShortUrl(t, r, `{"original_url":"https://example.com/one"}`)
-	createShortUrl(t, r, `{"original_url":"https://example.com/two"}`)
+	createShortURL(t, r, `{"original_url":"https://example.com/one"}`)
+	createShortURL(t, r, `{"original_url":"https://example.com/two"}`)
 
 	w := doRequest(t, r, http.MethodGet, "/short-urls", "")
 	if w.Code != http.StatusOK {
 		t.Fatalf("list returned %d, want %d: %s", w.Code, http.StatusOK, w.Body.String())
 	}
-	var list []model.ShortUrl
+	var list []model.ShortURL
 	if err := json.Unmarshal(w.Body.Bytes(), &list); err != nil {
-		t.Fatalf("list response is not a ShortUrl array: %v", err)
+		t.Fatalf("list response is not a ShortURL array: %v", err)
 	}
 	if len(list) != 2 {
 		t.Errorf("list returned %d entries, want 2", len(list))

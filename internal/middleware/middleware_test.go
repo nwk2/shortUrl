@@ -115,10 +115,10 @@ func TestRateLimitDisabled(t *testing.T) {
 	}
 }
 
-func TestApiKeyAuth(t *testing.T) {
+func TestAPIKeyAuth(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.Use(ApiKeyAuth("secret"))
+	r.Use(APIKeyAuth("secret"))
 	r.POST("/short-urls", func(c *gin.Context) { c.Status(http.StatusCreated) })
 
 	// No header -> 401.
@@ -147,10 +147,10 @@ func TestApiKeyAuth(t *testing.T) {
 	}
 }
 
-func TestApiKeyAuthDisabled(t *testing.T) {
+func TestAPIKeyAuthDisabled(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.Use(ApiKeyAuth(""))
+	r.Use(APIKeyAuth(""))
 	r.POST("/short-urls", func(c *gin.Context) { c.Status(http.StatusCreated) })
 
 	w := httptest.NewRecorder()

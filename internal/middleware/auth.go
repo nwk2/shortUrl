@@ -7,10 +7,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ApiKeyAuth requires the X-Api-Key header to match apiKey. An empty apiKey
+// APIKeyAuth requires the X-Api-Key header to match apiKey. An empty apiKey
 // disables auth entirely (all requests pass through); the caller is
 // responsible for warning about that at startup.
-func ApiKeyAuth(apiKey string) gin.HandlerFunc {
+func APIKeyAuth(apiKey string) gin.HandlerFunc {
 	if apiKey == "" {
 		return func(c *gin.Context) { c.Next() }
 	}

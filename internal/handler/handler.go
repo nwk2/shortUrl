@@ -26,7 +26,7 @@ func New(svc *service.Service) *Handler {
 // Lists live links only (expired ones are excluded; the hourly sweep
 // removes them). limit defaults to 50 and is capped at 100; offset
 // defaults to 0.
-func (h *Handler) ListShortUrls(c *gin.Context) {
+func (h *Handler) ListShortURLs(c *gin.Context) {
 	limit, offset, ok := parsePagination(c)
 	if !ok {
 		writeError(c, http.StatusBadRequest, "Invalid pagination parameters, expected ?limit=<1-100>&offset=<0+>")
@@ -35,7 +35,7 @@ func (h *Handler) ListShortUrls(c *gin.Context) {
 	links, err := h.svc.List(c.Request.Context(), limit, offset)
 	if err != nil {
 		// Don't leak the database error to the client; log it here.
-		log.Println("ListShortUrls failed:", err)
+		log.Println("ListShortURLs failed:", err)
 		writeError(c, http.StatusInternalServerError, "Internal server error")
 		return
 	}
@@ -68,7 +68,7 @@ func parsePagination(c *gin.Context) (limit, offset int, ok bool) {
 }
 
 // GET /short-urls/:hashKey
-func (h *Handler) GetShortUrlByHashKey(c *gin.Context) {
+func (h *Handler) GetShortURLByHashKey(c *gin.Context) {
 	link, err := h.svc.GetByHash(c.Request.Context(), c.Param("hashKey"))
 	if err != nil {
 		writeServiceError(c, err)
@@ -88,13 +88,13 @@ func (h *Handler) GetRedirect(c *gin.Context) {
 }
 
 // POST /short-urls
-func (h *Handler) CreateShortUrl(c *gin.Context) {
+func (h *Handler) CreateShortURL(c *gin.Context) {
 	// Cap the request body: a create is a URL plus an optional expiry,
 	// so anything past 1MB is abuse, not input. Without the cap, gin
 	// reads an unbounded body into memory.
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20)
 
-	var input model.CreateShortUrlInput
+	var input model.CreateShortURLInput
 	// ShouldBindJSON, not BindJSON: gin 1.11's MustBindWith (which
 	// BindJSON calls) aborts with 413 on a MaxBytesError before
 	// returning, and this handler maps every bind failure — including
@@ -106,7 +106,7 @@ func (h *Handler) CreateShortUrl(c *gin.Context) {
 		return
 	}
 
-	link, err := h.svc.Create(c.Request.Context(), input.OriginalUrl, input.ExpiryDate)
+	link, err := h.svc.Create(c.Request.Context(), input.OriginalURL, input.ExpiryDate)
 	if err != nil {
 		writeServiceError(c, err)
 		return

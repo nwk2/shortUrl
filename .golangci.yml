@@ -1,8 +1,10 @@
 # golangci-lint v2 config. Deliberately a small set: every linter here is
 # green on the current code, so the CI lint job fails only on new issues.
-# revive is NOT enabled: its var-naming rule flags the Url initialisms
-# (ShortUrl, OriginalUrl, ApiKeyAuth), which are a known wart pending a
-# rename decision, not something to fail CI over today.
+# revive runs with var-naming only: it enforces the URL/HTTP/ID
+# initialism convention. Its other rules are deliberately off — the
+# exported rule would force every handler comment into the "Name ..."
+# form, and the route-style comments (GET /short-urls ...) are more
+# useful than that.
 version: "2"
 run:
   timeout: 5m
@@ -14,6 +16,11 @@ linters:
     - unused
     - ineffassign
     - errcheck
+    - revive
+  settings:
+    revive:
+      rules:
+        - name: var-naming
 formatters:
   enable:
     - gofmt

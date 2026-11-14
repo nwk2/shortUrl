@@ -46,11 +46,11 @@ func main() {
 
 	// Create and list require the API key; reading one link and following
 	// a redirect stay public (that is what a short link is for).
-	protected := r.Group("/", middleware.ApiKeyAuth(cfg.APIKey))
-	protected.GET("/short-urls", h.ListShortUrls)
-	protected.POST("/short-urls", h.CreateShortUrl)
+	protected := r.Group("/", middleware.APIKeyAuth(cfg.APIKey))
+	protected.GET("/short-urls", h.ListShortURLs)
+	protected.POST("/short-urls", h.CreateShortURL)
 
-	r.GET("/short-urls/:hashKey", h.GetShortUrlByHashKey)
+	r.GET("/short-urls/:hashKey", h.GetShortURLByHashKey)
 
 	r.GET("/redirect/:hashKey", h.GetRedirect)
 

@@ -49,25 +49,25 @@ func New(s *store.Store, hostname string) *Service {
 }
 
 // Create validates the URL and expiry, mints a unique hash and stores the link.
-func (s *Service) Create(ctx context.Context, originalURL, expiry string) (model.ShortUrl, error) {
+func (s *Service) Create(ctx context.Context, originalURL, expiry string) (model.ShortURL, error) {
 	parsedURL, err := url.Parse(originalURL)
 	if err != nil || parsedURL.String() == "" {
-		return model.ShortUrl{}, ErrInvalidURL
+		return model.ShortURL{}, ErrInvalidURL
 	}
 	// Only http(s) links can be shortened. Anything else (javascript:,
 	// data:, ftp:, ...) would turn the short domain into a redirector
 	// to an arbitrary scheme. A missing scheme is fine — the redirect
 	// defaults it to http, as before.
 	if !allowedScheme(parsedURL.Scheme) {
-		return model.ShortUrl{}, ErrInvalidURL
+		return model.ShortURL{}, ErrInvalidURL
 	}
 
 	expiryTS, createdTS, err := parseTimestamps(expiry)
 	if err != nil {
-		return model.ShortUrl{}, ErrInvalidExpiry
+		return model.ShortURL{}, ErrInvalidExpiry
 	}
 	if expiryTS.Before(time.Now()) {
-		return model.ShortUrl{}, ErrExpiryPast
+		return model.ShortURL{}, ErrExpiryPast
 	}
 
 	// The insert is the uniqueness check: mint a candidate and try to
@@ -81,11 +81,11 @@ func (s *Service) Create(ctx context.Context, originalURL, expiry string) (model
 		for attempt := 0; attempt < hashAttempts; attempt++ {
 			candidate, err := s.mint(length)
 			if err != nil {
-				return model.ShortUrl{}, err
+				return model.ShortURL{}, err
 			}
-			link := model.ShortUrl{
-				ShortUrl:    s.hostname + candidate,
-				OriginalUrl: parsedURL.String(),
+			link := model.ShortURL{
+				ShortURL:    s.hostname + candidate,
+				OriginalURL: parsedURL.String(),
 				HashKey:     candidate,
 				CreatedDate: createdTS,
 				ExpiryDate:  expiryTS,
@@ -93,21 +93,21 @@ func (s *Service) Create(ctx context.Context, originalURL, expiry string) (model
 			if err := s.store.Create(ctx, &link); err == nil {
 				return link, nil
 			} else if !errors.Is(err, store.ErrHashConflict) {
-				return model.ShortUrl{}, err
+				return model.ShortURL{}, err
 			}
 		}
 	}
-	return model.ShortUrl{}, ErrHashExhausted
+	return model.ShortURL{}, ErrHashExhausted
 }
 
 // GetByHash returns the link for a hash, or ErrNotFound / ErrExpired.
-func (s *Service) GetByHash(ctx context.Context, hashKey string) (model.ShortUrl, error) {
+func (s *Service) GetByHash(ctx context.Context, hashKey string) (model.ShortURL, error) {
 	link, err := s.store.GetByHash(ctx, hashKey)
 	if err != nil {
-		return model.ShortUrl{}, err
+		return model.ShortURL{}, err
 	}
 	if isExpired(link) {
-		return model.ShortUrl{}, ErrExpired
+		return model.ShortURL{}, ErrExpired
 	}
 	return link, nil
 }
@@ -115,7 +115,7 @@ func (s *Service) GetByHash(ctx context.Context, hashKey string) (model.ShortUrl
 // List returns live (unexpired) links, pageSize at a time, in creation
 // order. Expired rows are excluded here; they are removed by the hourly
 // sweep, and GetByHash still reports 410 for them until then.
-func (s *Service) List(ctx context.Context, limit, offset int) ([]model.ShortUrl, error) {
+func (s *Service) List(ctx context.Context, limit, offset int) ([]model.ShortURL, error) {
 	return s.store.List(ctx, limit, offset)
 }
 
@@ -128,7 +128,7 @@ func (s *Service) Resolve(ctx context.Context, hashKey string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	redirectURL, err := url.Parse(link.OriginalUrl)
+	redirectURL, err := url.Parse(link.OriginalURL)
 	if err != nil {
 		return "", err
 	}
@@ -152,7 +152,7 @@ func allowedScheme(scheme string) bool {
 	}
 }
 
-func isExpired(link model.ShortUrl) bool {
+func isExpired(link model.ShortURL) bool {
 	return time.Now().After(link.ExpiryDate)
 }
 

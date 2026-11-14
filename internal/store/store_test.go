@@ -23,7 +23,7 @@ func setupTestStore(t *testing.T) *Store {
 		t.Fatalf("failed to get sql db: %v", err)
 	}
 	sqlDB.SetMaxOpenConns(1)
-	if err := db.AutoMigrate(&model.ShortUrl{}); err != nil {
+	if err := db.AutoMigrate(&model.ShortURL{}); err != nil {
 		t.Fatalf("failed to migrate test db: %v", err)
 	}
 	t.Cleanup(func() { _ = sqlDB.Close() })
@@ -32,9 +32,9 @@ func setupTestStore(t *testing.T) *Store {
 
 func insertLink(t *testing.T, st *Store, hashKey string, expiry time.Time) {
 	t.Helper()
-	link := model.ShortUrl{
-		ShortUrl:    "http://localhost:8080/redirect/" + hashKey,
-		OriginalUrl: "https://example.com/" + hashKey,
+	link := model.ShortURL{
+		ShortURL:    "http://localhost:8080/redirect/" + hashKey,
+		OriginalURL: "https://example.com/" + hashKey,
 		HashKey:     hashKey,
 		CreatedDate: time.Now(),
 		ExpiryDate:  expiry,
@@ -53,9 +53,9 @@ func TestCreateDuplicateHashIsConflict(t *testing.T) {
 	// Same hash (and, derived from it, the same short URL) again: the
 	// insert must report a conflict, not a generic database error, so
 	// the service can retry with a fresh hash.
-	dup := model.ShortUrl{
-		ShortUrl:    "http://localhost:8080/redirect/abc1234",
-		OriginalUrl: "https://example.com/other",
+	dup := model.ShortURL{
+		ShortURL:    "http://localhost:8080/redirect/abc1234",
+		OriginalURL: "https://example.com/other",
 		HashKey:     "abc1234",
 		CreatedDate: time.Now(),
 		ExpiryDate:  time.Now().Add(24 * time.Hour),
@@ -143,7 +143,7 @@ func TestStoreDeleteExpired(t *testing.T) {
 	}
 }
 
-func hashKeys(links []model.ShortUrl) []string {
+func hashKeys(links []model.ShortURL) []string {
 	keys := make([]string, len(links))
 	for i, l := range links {
 		keys[i] = l.HashKey
