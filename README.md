@@ -19,7 +19,7 @@ three on every push to master.
 
 ```
 cmd/shorturl/            entry point: load config, open store, wire routes
-internal/config/         Config struct + viper loader (loaded once at startup)
+internal/config/         Config struct + YAML loader (yaml.v3, env overrides)
 internal/model/          ShortUrl entity + create input (DB row and JSON body)
 internal/store/          Store: all SQLite access, one *gorm.DB, context-aware
 internal/service/        domain: URL/expiry validation, hash minting, expiry rules
@@ -59,8 +59,8 @@ error"}`; the detail goes to the server log, not the client.
 ## Config
 
 `configs/app_config.yml`; every key can be overridden by an environment
-variable of the same name. Missing file or key falls back to the defaults
-shown here.
+variable of the same name (`CORS_ALLOWED_ORIGINS` takes a comma-separated
+list). Missing file or key falls back to the defaults shown here.
 
 | Key | Default | Notes |
 | --- | ------- | ----- |
