@@ -3,7 +3,10 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -33,25 +36,243 @@ func setupTestService(t *testing.T) *Service {
 }
 
 func TestGenerateHash(t *testing.T) {
-	const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 	seen := make(map[string]bool, 1000)
 	for i := 0; i < 1000; i++ {
-		h, err := generateHash()
+		h, err := generateHash(7)
 		if err != nil {
 			t.Fatalf("generateHash returned error: %v", err)
 		}
-		if len(h) != 11 {
-			t.Fatalf("hash %q has length %d, want 11", h, len(h))
+		if len(h) != 7 {
+			t.Fatalf("hash %q has length %d, want 7", h, len(h))
 		}
 		for _, c := range h {
 			if !strings.ContainsRune(alphabet, c) {
-				t.Fatalf("hash %q contains non-base62 rune %q", h, c)
+				t.Fatalf("hash %q contains non-base58 rune %q", h, c)
 			}
 		}
 		if seen[h] {
 			t.Fatalf("duplicate hash %q in 1000 draws", h)
 		}
 		seen[h] = true
+	}
+
+	// The other lengths mint exactly that many characters.
+	for _, length := range []int{8, 9} {
+		h, err := generateHash(length)
+		if err != nil {
+			t.Fatalf("generateHash(%d) returned error: %v", length, err)
+		}
+		if len(h) != length {
+			t.Fatalf("generateHash(%d) = %q, length %d", length, h, len(h))
+		}
+	}
+
+	// Every alphabet character shows up over enough draws. With ~140k
+	// draws the chance of a given character never appearing is
+	// e^-2400, so this is a sampler-coverage check, not a flaky
+	// statistical test. It also proves none of the ambiguous 0/O/I/l
+	// ever appears: they aren't in the alphabet at all.
+	seenRunes := make(map[rune]bool, len(alphabet))
+	for i := 0; i < 20000; i++ {
+		h, err := generateHash(7)
+		if err != nil {
+			t.Fatalf("generateHash returned error: %v", err)
+		}
+		for _, c := range h {
+			seenRunes[c] = true
+		}
+	}
+	for _, c := range alphabet {
+		if !seenRunes[c] {
+			t.Errorf("alphabet rune %q never drawn in 20000 hashes", c)
+		}
+	}
+}
+
+func TestServiceCreateRetriesHashConflict(t *testing.T) {
+	svc := setupTestService(t)
+	ctx := context.Background()
+
+	taken := model.ShortUrl{
+		ShortUrl:    "http://localhost:8080/redirect/1111111",
+		OriginalUrl: "https://example.com/taken",
+		HashKey:     "1111111",
+		CreatedDate: time.Now(),
+		ExpiryDate:  time.Now().Add(24 * time.Hour),
+	}
+	if err := svc.store.Create(ctx, &taken); err != nil {
+		t.Fatalf("store.Create returned error: %v", err)
+	}
+
+	// First two candidates collide with the seeded row; the third is free.
+	calls := 0
+	svc.mint = func(length int) (string, error) {
+		calls++
+		if calls <= 2 {
+			return "1111111", nil
+		}
+		return "2222222", nil
+	}
+	link, err := svc.Create(ctx, "https://example.com/retry", "")
+	if err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+	if link.HashKey != "2222222" {
+		t.Errorf("hash_key = %q, want the first non-colliding candidate", link.HashKey)
+	}
+	if calls != 3 {
+		t.Errorf("mint called %d times, want 3", calls)
+	}
+}
+
+func TestServiceCreateGrowsHashLength(t *testing.T) {
+	svc := setupTestService(t)
+	ctx := context.Background()
+
+	taken := model.ShortUrl{
+		ShortUrl:    "http://localhost:8080/redirect/1111111",
+		OriginalUrl: "https://example.com/taken",
+		HashKey:     "1111111",
+		CreatedDate: time.Now(),
+		ExpiryDate:  time.Now().Add(24 * time.Hour),
+	}
+	if err := svc.store.Create(ctx, &taken); err != nil {
+		t.Fatalf("store.Create returned error: %v", err)
+	}
+
+	// Length 7 is exhausted (every candidate collides); length 8 mints
+	// a fresh hash on its first attempt.
+	calls := 0
+	svc.mint = func(length int) (string, error) {
+		calls++
+		if length == 7 {
+			return "1111111", nil
+		}
+		return "22222222", nil
+	}
+	link, err := svc.Create(ctx, "https://example.com/grow", "")
+	if err != nil {
+		t.Fatalf("Create returned error: %v", err)
+	}
+	if len(link.HashKey) != 8 || link.HashKey != "22222222" {
+		t.Errorf("hash_key = %q, want the 8-character candidate", link.HashKey)
+	}
+	// 5 failed attempts at length 7, then 1 at length 8.
+	if calls != 6 {
+		t.Errorf("mint called %d times, want 6", calls)
+	}
+}
+
+func TestServiceCreateHashExhausted(t *testing.T) {
+	svc := setupTestService(t)
+	ctx := context.Background()
+
+	taken := model.ShortUrl{
+		ShortUrl:    "http://localhost:8080/redirect/1111111",
+		OriginalUrl: "https://example.com/taken",
+		HashKey:     "1111111",
+		CreatedDate: time.Now(),
+		ExpiryDate:  time.Now().Add(24 * time.Hour),
+	}
+	if err := svc.store.Create(ctx, &taken); err != nil {
+		t.Fatalf("store.Create returned error: %v", err)
+	}
+
+	calls := 0
+	svc.mint = func(length int) (string, error) {
+		calls++
+		return "1111111", nil
+	}
+	if _, err := svc.Create(ctx, "https://example.com/exhaust", ""); !errors.Is(err, ErrHashExhausted) {
+		t.Errorf("Create error = %v, want ErrHashExhausted", err)
+	}
+	// 5 attempts at each of lengths 7, 8 and 9, then give up.
+	if calls != 15 {
+		t.Errorf("mint called %d times, want 15", calls)
+	}
+}
+
+func TestServiceCreateConcurrent(t *testing.T) {
+	// The pre-check design raced: two concurrent creates for the same
+	// candidate could both pass the lookup, and one insert would fail
+	// on the unique index with a 500. Insert-retry makes that
+	// impossible: every create either lands a unique hash or retries.
+	// A file-backed database in WAL mode with several connections
+	// exercises it for real; an in-memory database serialises on a
+	// single connection and would hide the race.
+	dbPath := filepath.Join(t.TempDir(), "race.db")
+	db, err := gorm.Open(sqlite.Open(dbPath+"?_busy_timeout=10000&_journal_mode=WAL"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("failed to open test db: %v", err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("failed to get sql db: %v", err)
+	}
+	sqlDB.SetMaxOpenConns(8)
+	if err := db.AutoMigrate(&model.ShortUrl{}); err != nil {
+		t.Fatalf("failed to migrate test db: %v", err)
+	}
+	t.Cleanup(func() { sqlDB.Close() })
+	svc := New(store.New(db), "http://localhost:8080/redirect/")
+
+	const n = 50
+	hashes := make(chan string, n)
+	errs := make(chan error, n)
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			link, err := svc.Create(context.Background(), fmt.Sprintf("https://example.com/%d", i), "")
+			if err != nil {
+				errs <- err
+				return
+			}
+			hashes <- link.HashKey
+		}(i)
+	}
+	wg.Wait()
+	close(hashes)
+	close(errs)
+	for err := range errs {
+		t.Errorf("concurrent Create returned error: %v", err)
+	}
+	seen := make(map[string]bool, n)
+	for h := range hashes {
+		if seen[h] {
+			t.Errorf("duplicate hash %q across concurrent creates", h)
+		}
+		seen[h] = true
+	}
+	if len(seen) != n {
+		t.Errorf("got %d unique hashes, want %d", len(seen), n)
+	}
+}
+
+func TestServiceGetByHashOldLength(t *testing.T) {
+	// An 11-character hash minted before the base58 change still
+	// resolves: lookup is by hash value, not by length.
+	svc := setupTestService(t)
+	ctx := context.Background()
+
+	old := model.ShortUrl{
+		ShortUrl:    "http://localhost:8080/redirect/9I3BXIwDa44",
+		OriginalUrl: "https://example.com/old",
+		HashKey:     "9I3BXIwDa44",
+		CreatedDate: time.Now(),
+		ExpiryDate:  time.Now().Add(24 * time.Hour),
+	}
+	if err := svc.store.Create(ctx, &old); err != nil {
+		t.Fatalf("store.Create returned error: %v", err)
+	}
+	got, err := svc.GetByHash(ctx, "9I3BXIwDa44")
+	if err != nil {
+		t.Fatalf("GetByHash returned error: %v", err)
+	}
+	if got.OriginalUrl != "https://example.com/old" {
+		t.Errorf("original_url = %q", got.OriginalUrl)
 	}
 }
 

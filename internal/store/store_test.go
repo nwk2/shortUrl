@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -40,6 +41,27 @@ func insertLink(t *testing.T, st *Store, hashKey string, expiry time.Time) {
 	}
 	if err := st.Create(context.Background(), &link); err != nil {
 		t.Fatalf("failed to insert link %q: %v", hashKey, err)
+	}
+}
+
+func TestCreateDuplicateHashIsConflict(t *testing.T) {
+	st := setupTestStore(t)
+	ctx := context.Background()
+
+	insertLink(t, st, "abc1234", time.Now().Add(24*time.Hour))
+
+	// Same hash (and, derived from it, the same short URL) again: the
+	// insert must report a conflict, not a generic database error, so
+	// the service can retry with a fresh hash.
+	dup := model.ShortUrl{
+		ShortUrl:    "http://localhost:8080/redirect/abc1234",
+		OriginalUrl: "https://example.com/other",
+		HashKey:     "abc1234",
+		CreatedDate: time.Now(),
+		ExpiryDate:  time.Now().Add(24 * time.Hour),
+	}
+	if err := st.Create(ctx, &dup); !errors.Is(err, ErrHashConflict) {
+		t.Fatalf("duplicate Create returned %v, want ErrHashConflict", err)
 	}
 }
 

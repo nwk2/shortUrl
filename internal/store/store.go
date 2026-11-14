@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	sqlite3 "github.com/mattn/go-sqlite3"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -14,6 +15,11 @@ import (
 
 // ErrNotFound is returned when no row matches the requested hash.
 var ErrNotFound = errors.New("short url not found")
+
+// ErrHashConflict is returned when an insert fails because the hash key
+// (and, derived from it, the short URL) is already taken. The service
+// retries with a fresh hash instead of surfacing a 500.
+var ErrHashConflict = errors.New("hash key already exists")
 
 // Store owns all persistence for short links. It wraps a single *gorm.DB;
 // callers never touch the database directly, which is what lets tests
@@ -59,7 +65,23 @@ func parseLogLevel(s string) logger.LogLevel {
 }
 
 func (s *Store) Create(ctx context.Context, link *model.ShortUrl) error {
-	return s.db.WithContext(ctx).Create(link).Error
+	err := s.db.WithContext(ctx).Create(link).Error
+	if err != nil && isUniqueViolation(err) {
+		return ErrHashConflict
+	}
+	return err
+}
+
+// isUniqueViolation reports whether err is a SQLite unique-constraint
+// failure. The driver surfaces it as a typed sqlite3.Error carrying the
+// extended code ErrConstraintUnique; anything else (a locked database,
+// a disk error) is a real failure, not a collision.
+func isUniqueViolation(err error) bool {
+	var sqliteErr sqlite3.Error
+	if errors.As(err, &sqliteErr) {
+		return sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique
+	}
+	return false
 }
 
 func (s *Store) GetByHash(ctx context.Context, hashKey string) (model.ShortUrl, error) {

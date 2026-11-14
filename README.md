@@ -46,7 +46,7 @@ on an in-memory database.
 
 `GET /short-urls` and `POST /short-urls` require the `X-Api-Key` header when
 `API_KEY` is set; an empty key disables auth (the server logs a warning).
-Hashes are 11-character base62 tokens minted from `crypto/rand`.
+Hashes are random base58 tokens minted from `crypto/rand`: 7 characters to start, growing to 8–9 only if a length is exhausted by collisions. Old 11-character hashes keep working.
 
 Expired links are removed by an hourly background sweep; until the sweep
 runs, a single expired link still answers `410` and is excluded from the
