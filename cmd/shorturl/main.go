@@ -11,11 +11,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"shortUrl/internal/config"
-	"shortUrl/internal/handler"
-	"shortUrl/internal/middleware"
-	"shortUrl/internal/service"
-	"shortUrl/internal/store"
+	"shorturl/internal/config"
+	"shorturl/internal/handler"
+	"shorturl/internal/middleware"
+	"shorturl/internal/service"
+	"shorturl/internal/store"
 )
 
 func main() {

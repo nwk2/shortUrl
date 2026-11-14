@@ -13,9 +13,9 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
-	"shortUrl/internal/model"
-	"shortUrl/internal/service"
-	"shortUrl/internal/store"
+	"shorturl/internal/model"
+	"shorturl/internal/service"
+	"shorturl/internal/store"
 )
 
 // setupTestHandler builds a Handler backed by a fresh in-memory store.

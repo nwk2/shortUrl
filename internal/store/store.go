@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	"shortUrl/internal/model"
+	"shorturl/internal/model"
 )
 
 // ErrNotFound is returned when no row matches the requested hash.

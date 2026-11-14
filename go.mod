@@ -1,4 +1,4 @@
-module shortUrl
+module shorturl
 
 go 1.23.0
 

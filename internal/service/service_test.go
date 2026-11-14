@@ -13,8 +13,8 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
-	"shortUrl/internal/model"
-	"shortUrl/internal/store"
+	"shorturl/internal/model"
+	"shorturl/internal/store"
 )
 
 func setupTestService(t *testing.T) *Service {

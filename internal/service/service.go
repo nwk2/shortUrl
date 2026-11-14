@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"time"
 
-	"shortUrl/internal/model"
-	"shortUrl/internal/store"
+	"shorturl/internal/model"
+	"shorturl/internal/store"
 )
 
 // Sentinel errors the handler maps to HTTP statuses. Messages stay the

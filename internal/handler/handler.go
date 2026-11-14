@@ -8,8 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"shortUrl/internal/model"
-	"shortUrl/internal/service"
+	"shorturl/internal/model"
+	"shorturl/internal/service"
 )
 
 // Handler is the HTTP layer: bind, validate the request shape, call the
