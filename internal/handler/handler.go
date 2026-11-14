@@ -29,14 +29,14 @@ func New(svc *service.Service) *Handler {
 func (h *Handler) ListShortUrls(c *gin.Context) {
 	limit, offset, ok := parsePagination(c)
 	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid pagination parameters, expected ?limit=<1-100>&offset=<0+>"})
+		writeError(c, http.StatusBadRequest, "Invalid pagination parameters, expected ?limit=<1-100>&offset=<0+>")
 		return
 	}
 	links, err := h.svc.List(c.Request.Context(), limit, offset)
 	if err != nil {
 		// Don't leak the database error to the client; log it here.
 		log.Println("ListShortUrls failed:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		writeError(c, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	c.JSON(http.StatusOK, links)
@@ -102,7 +102,7 @@ func (h *Handler) CreateShortUrl(c *gin.Context) {
 	// without writing a response, so the 400 below is the only status
 	// the client sees.
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		writeError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -114,27 +114,34 @@ func (h *Handler) CreateShortUrl(c *gin.Context) {
 	c.JSON(http.StatusCreated, link)
 }
 
+// writeError answers with the single error shape {"error": msg}. Every
+// error response in this package goes through here so the shape can't
+// drift between handlers.
+func writeError(c *gin.Context, status int, msg string) {
+	c.JSON(status, gin.H{"error": msg})
+}
+
 // writeServiceError maps a service error to the status and message the
 // old handlers returned for the same condition.
 func writeServiceError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, service.ErrNotFound):
-		c.JSON(http.StatusNotFound, gin.H{"error": "ShortUrl not found"})
+		writeError(c, http.StatusNotFound, "Short URL not found")
 	case errors.Is(err, service.ErrExpired):
-		c.JSON(http.StatusGone, gin.H{"error": "ShortUrl expired"})
+		writeError(c, http.StatusGone, "Short URL expired")
 	case errors.Is(err, service.ErrInvalidURL):
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid url provided..."})
+		writeError(c, http.StatusBadRequest, "Invalid URL provided")
 	case errors.Is(err, service.ErrInvalidExpiry):
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid expiry date, expected format YYYY-MM-DD HH:MM"})
+		writeError(c, http.StatusBadRequest, "Invalid expiry date, expected format YYYY-MM-DD HH:MM")
 	case errors.Is(err, service.ErrExpiryPast):
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Expiry date must be a future timestamp"})
+		writeError(c, http.StatusBadRequest, "Expiry date must be a future timestamp")
 	case errors.Is(err, service.ErrHashExhausted):
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate a unique short url, please retry"})
+		writeError(c, http.StatusInternalServerError, "Failed to generate a unique short url, please retry")
 	default:
 		// Anything unrecognised here is a server-side failure (usually
 		// the database). Log the real error, but answer with a generic
 		// message — the raw error can expose SQLite internals.
 		log.Println("Unhandled service error:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		writeError(c, http.StatusInternalServerError, "Internal server error")
 	}
 }
