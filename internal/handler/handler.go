@@ -95,7 +95,13 @@ func (h *Handler) CreateShortUrl(c *gin.Context) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20)
 
 	var input model.CreateShortUrlInput
-	if err := c.BindJSON(&input); err != nil {
+	// ShouldBindJSON, not BindJSON: gin 1.11's MustBindWith (which
+	// BindJSON calls) aborts with 413 on a MaxBytesError before
+	// returning, and this handler maps every bind failure — including
+	// an oversized body — to 400. ShouldBindWith returns the error
+	// without writing a response, so the 400 below is the only status
+	// the client sees.
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
