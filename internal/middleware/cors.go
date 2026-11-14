@@ -28,10 +28,15 @@ func CorsMiddleware(allowedOrigins []string) gin.HandlerFunc {
 			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 			c.Writer.Header().Set("Vary", "Origin")
 		}
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Api-Key")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST,OPTIONS,GET,PUT")
+		// The lists match what the API actually serves: GET and POST
+		// routes, plus OPTIONS for the preflight itself. X-Api-Key is
+		// the only auth header; there is no Authorization scheme and
+		// no PUT route.
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Api-Key")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 
 		if c.Request.Method == "OPTIONS" {
+			c.Writer.Header().Set("Access-Control-Max-Age", "86400")
 			c.AbortWithStatus(204)
 			return
 		}
